@@ -59,32 +59,68 @@ data class AnchorPayload(
         private fun fmt(v: Double): String =
             String.format(Locale.US, "%.4f", v).trimEnd('0').trimEnd('.')
 
-        fun parse(raw: String): AnchorPayload? = try {
-            val u = Uri.parse(raw)
-            if (u.scheme != "mycon" || u.host != "anchor" || u.path != "/v1") return null
+        fun parse(raw: String): AnchorPayload? {
+            return try {
+                val u = Uri.parse(raw)
+                if (u.scheme != "mycon" || u.host != "anchor" || u.path != "/v1") {
+                    return null
+                }
 
-            val payload = AnchorPayload(
-                project = u.getQueryParameter("project")?.trim().orEmpty(),
-                anchor = u.getQueryParameter("anchor")?.trim().orEmpty(),
-                crs = u.getQueryParameter("crs")?.trim().orEmpty(),
-                x = u.getQueryParameter("x")?.toDouble() ?: return null,
-                y = u.getQueryParameter("y")?.toDouble() ?: return null,
-                z = u.getQueryParameter("z")?.toDouble() ?: return null,
-                mount = u.getQueryParameter("mount")?.uppercase(Locale.US) ?: return null,
-                azimuthDeg = u.getQueryParameter("azimuth_deg")?.toDouble() ?: return null,
-                sizeMm = u.getQueryParameter("size_mm")?.toDouble() ?: return null,
-                floor = u.getQueryParameter("floor") ?: ""
-            )
+                val project = u.getQueryParameter("project")?.trim().orEmpty()
+                val anchor = u.getQueryParameter("anchor")?.trim().orEmpty()
+                val crs = u.getQueryParameter("crs")?.trim().orEmpty()
+                val x = u.getQueryParameter("x")?.toDoubleOrNull() ?: return null
+                val y = u.getQueryParameter("y")?.toDoubleOrNull() ?: return null
+                val z = u.getQueryParameter("z")?.toDoubleOrNull() ?: return null
+                val mount =
+                    u.getQueryParameter("mount")
+                        ?.uppercase(Locale.US)
+                        ?: return null
+                val azimuth =
+                    u.getQueryParameter("azimuth_deg")
+                        ?.toDoubleOrNull()
+                        ?: return null
+                val size =
+                    u.getQueryParameter("size_mm")
+                        ?.toDoubleOrNull()
+                        ?: return null
+                val floor = u.getQueryParameter("floor") ?: ""
 
-            if (payload.project.isBlank() || payload.anchor.isBlank() || payload.crs.isBlank()) return null
-            if (payload.mount !in setOf("VERTICAL", "HORIZONTAL")) return null
-            if (!payload.sizeMm.isFinite() || payload.sizeMm <= 0.0) return null
-            if (!payload.x.isFinite() || !payload.y.isFinite() || !payload.z.isFinite()) return null
+                val payload = AnchorPayload(
+                    project = project,
+                    anchor = anchor,
+                    crs = crs,
+                    x = x,
+                    y = y,
+                    z = z,
+                    mount = mount,
+                    azimuthDeg = azimuth,
+                    sizeMm = size,
+                    floor = floor
+                )
 
-            val sig = u.getQueryParameter("sig") ?: return null
-            if (sig.equals(payload.checksum(), ignoreCase = true)) payload else null
-        } catch (_: Exception) {
-            null
+                if (payload.project.isBlank() || payload.anchor.isBlank() || payload.crs.isBlank()) {
+                    return null
+                }
+                if (payload.mount !in setOf("VERTICAL", "HORIZONTAL")) {
+                    return null
+                }
+                if (!payload.sizeMm.isFinite() || payload.sizeMm <= 0.0) {
+                    return null
+                }
+                if (!payload.x.isFinite() || !payload.y.isFinite() || !payload.z.isFinite()) {
+                    return null
+                }
+
+                val sig = u.getQueryParameter("sig") ?: return null
+                if (sig.equals(payload.checksum(), ignoreCase = true)) {
+                    payload
+                } else {
+                    null
+                }
+            } catch (_: Exception) {
+                null
+            }
         }
     }
 }
