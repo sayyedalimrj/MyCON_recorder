@@ -55,6 +55,9 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     @Volatile
     private var recording = false
 
+    @Volatile
+    private var latestTrackingState: TrackingState = TrackingState.PAUSED
+
     private var telemetry: TelemetryRecorder? = null
     private var currentSessionDir: File? = null
 
@@ -404,6 +407,7 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         lastUiUpdateNs = frame.timestamp
 
         val tracking = frame.camera.trackingState
+        latestTrackingState = tracking
         val project = activeProject ?: "NO CONTROL"
         val rec = if (recording) "● REC" else "READY"
 
@@ -480,7 +484,7 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             arSession ?: return toast("ARCore هنوز آماده نیست.")
 
         if (
-            session.camera.trackingState != TrackingState.TRACKING
+            latestTrackingState != TrackingState.TRACKING
         ) {
             toast(
                 "Tracking هنوز پایدار نیست. چند لحظه دوربین را آرام حرکت بده."
