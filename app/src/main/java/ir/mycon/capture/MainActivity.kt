@@ -123,6 +123,7 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     private var latestTrackingState: TrackingState = TrackingState.PAUSED
 
     private var telemetry: TelemetryRecorder? = null
+    private var depthRecorder: DepthRecorder? = null
     private var currentSessionDir: File? = null
     private var recordingStartedElapsedMs = 0L
     private var lastUiUpdateElapsedMs = 0L
@@ -896,6 +897,16 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                                     } else {
                                         Config.FlashMode.OFF
                                     }
+
+                                if (
+                                    settings.depthLogging &&
+                                    session.isDepthModeSupported(
+                                        Config.DepthMode.AUTOMATIC
+                                    )
+                                ) {
+                                    depthMode =
+                                        Config.DepthMode.AUTOMATIC
+                                }
                             }
                         session.configure(config)
                         appliedFocusMode =
@@ -1066,6 +1077,7 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
         if (recording) {
             telemetry?.recordFrame(frame)
+            depthRecorder?.recordFrame(frame)
 
             while (true) {
                 val bytes = pendingTrackData.poll() ?: break
@@ -2024,6 +2036,19 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                     focusMode = settings.focusMode,
                     torchEnabled = settings.torchEnabled
                 )
+
+            val depthEnabled =
+                settings.depthLogging &&
+                    session.isDepthModeSupported(
+                        Config.DepthMode.AUTOMATIC
+                    )
+
+            depthRecorder =
+                DepthRecorder(
+                    sessionDir = dir,
+                    enabled = depthEnabled
+                )
+
             recording = true
             recordingStartedElapsedMs = SystemClock.elapsedRealtime()
 
@@ -2078,6 +2103,11 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             mp4Name = "arcore_recording.mp4"
         )
         telemetry = null
+
+        depthRecorder
+            ?.closeAndAttachToSession()
+        depthRecorder = null
+
         pendingTrackData.clear()
 
         val completedDir =
