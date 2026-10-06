@@ -137,7 +137,14 @@ class QrGeneratorActivity : AppCompatActivity() {
         mountGroup.check(vertical.id)
         mountGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
-            mountMode = if (checkedId == horizontal.id) "HORIZONTAL" else "VERTICAL"
+            val horizontalSelected = checkedId == horizontal.id
+            mountMode = if (horizontalSelected) "HORIZONTAL" else "VERTICAL"
+            vertical.backgroundTintList = android.content.res.ColorStateList.valueOf(
+                if (horizontalSelected) Ui.SURFACE_2 else Ui.BLUE
+            )
+            horizontal.backgroundTintList = android.content.res.ColorStateList.valueOf(
+                if (horizontalSelected) Ui.BLUE else Ui.SURFACE_2
+            )
         }
         form.addView(mountGroup)
 
