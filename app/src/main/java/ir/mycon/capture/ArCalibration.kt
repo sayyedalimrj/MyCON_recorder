@@ -130,11 +130,17 @@ class MultiAnchorScaleCalibrator {
             }
 
         // Huge corrections mean the QR geometry/control layout is wrong.
-        // Do not silently distort the model.
-        return median.coerceIn(
-            MIN_ALLOWED_SCALE_CORRECTION,
-            MAX_ALLOWED_SCALE_CORRECTION
-        )
+        // Do not silently distort the model. Fall back to the metric scale
+        // from ARCore + physical QR size and surface the red QA warning.
+        return if (
+            median in
+            MIN_ALLOWED_SCALE_CORRECTION..
+                MAX_ALLOWED_SCALE_CORRECTION
+        ) {
+            median
+        } else {
+            1.0
+        }
     }
 
     @Synchronized
