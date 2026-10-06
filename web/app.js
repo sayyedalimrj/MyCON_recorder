@@ -245,12 +245,38 @@ $("exportQa").addEventListener("click",()=>{
 });
 
 let modelObjectURL=null;
+let measurementMode=false;
+let measurementPoints=[];
+
+function resetModelMeasure(){
+  measurementMode=false;
+  measurementPoints=[];
+  $("measureResult").textContent="—";
+  $("measureModel").textContent="Measure 2 points";
+  const viewer=$("modelViewer");
+  [...viewer.querySelectorAll("[slot^='hotspot-measure-']")].forEach(x=>x.remove());
+}
+
+function addMeasureHotspot(point,index){
+  const viewer=$("modelViewer");
+  const dot=document.createElement("button");
+  dot.className="measure-hotspot";
+  dot.slot="hotspot-measure-"+index;
+  dot.dataset.position=point.position.toString();
+  dot.dataset.normal=point.normal.toString();
+  dot.setAttribute("aria-label","Measurement point "+index);
+  viewer.appendChild(dot);
+}
+
 $("modelInput").addEventListener("change",e=>{
   const file=e.target.files?.[0];if(!file)return;
+  resetModelMeasure();
+  $("modelDimensions").textContent="ابعاد: —";
   if(modelObjectURL)URL.revokeObjectURL(modelObjectURL);
   modelObjectURL=URL.createObjectURL(file);
   const viewer=$("modelViewer");
   const ext=file.name.split(".").pop().toLowerCase();
+
   if(ext==="usdz"){
     viewer.removeAttribute("src");
     viewer.setAttribute("ios-src",modelObjectURL);
@@ -260,6 +286,52 @@ $("modelInput").addEventListener("change",e=>{
     viewer.removeAttribute("ios-src");
     $("modelMessage").textContent=file.name+" • "+(file.size/1024/1024).toFixed(1)+" MB • Local object URL";
   }
+});
+
+$("modelViewer").addEventListener("load",()=>{
+  const viewer=$("modelViewer");
+  if(typeof viewer.getDimensions==="function"){
+    const d=viewer.getDimensions();
+    $("modelDimensions").textContent=
+      "X "+d.x.toFixed(3)+"m • Y "+d.y.toFixed(3)+"m • Z "+d.z.toFixed(3)+"m";
+  }
+});
+
+$("measureModel").addEventListener("click",()=>{
+  measurementMode=true;
+  measurementPoints=[];
+  $("measureResult").textContent="نقطه 1 را انتخاب کن";
+  $("measureModel").textContent="در حال اندازه‌گیری…";
+  [...$("modelViewer").querySelectorAll("[slot^='hotspot-measure-']")].forEach(x=>x.remove());
+});
+$("resetMeasure").addEventListener("click",resetModelMeasure);
+
+$("modelViewer").addEventListener("click",e=>{
+  if(!measurementMode)return;
+  const viewer=$("modelViewer");
+  if(typeof viewer.positionAndNormalFromPoint!=="function"){
+    $("measureResult").textContent="Measurement API unavailable";
+    measurementMode=false;
+    return;
+  }
+  const hit=viewer.positionAndNormalFromPoint(e.clientX,e.clientY);
+  if(!hit)return;
+  measurementPoints.push(hit);
+  addMeasureHotspot(hit,measurementPoints.length);
+
+  if(measurementPoints.length===1){
+    $("measureResult").textContent="نقطه 2 را انتخاب کن";
+    return;
+  }
+
+  const a=measurementPoints[0].position;
+  const b=measurementPoints[1].position;
+  const dx=a.x-b.x,dy=a.y-b.y,dz=a.z-b.z;
+  const dist=Math.sqrt(dx*dx+dy*dy+dz*dz);
+  $("measureResult").textContent=
+    dist<1 ? (dist*1000).toFixed(1)+" mm" : dist.toFixed(4)+" m";
+  $("measureModel").textContent="Measure again";
+  measurementMode=false;
 });
 
 let mediaStream=null,mediaRecorder=null,mediaChunks=[],motionRows=[],geoRows=[],webStartedAt=0,webTimer=null,geoWatch=null,lastWebPackage=null,lastWebPackageName="";
