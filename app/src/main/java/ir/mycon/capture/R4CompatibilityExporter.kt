@@ -333,7 +333,7 @@ object R4CompatibilityExporter {
                 )
                 .put(
                     "app_version",
-                    "1.0.0"
+                    "1.0.1"
                 )
                 .put(
                     "pipeline_family",
