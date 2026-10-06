@@ -704,3 +704,34 @@ input,select,textarea{-webkit-appearance:none;appearance:none}
 @media(prefers-reduced-motion:reduce){
   *{scroll-behavior:auto!important;animation:none!important;transition:none!important}
 }
+
+
+.toast-host{
+  position:fixed;
+  z-index:100;
+  left:50%;
+  bottom:calc(88px + env(safe-area-inset-bottom));
+  transform:translateX(-50%);
+  width:min(360px,calc(100% - 32px));
+  display:grid;
+  gap:8px;
+  pointer-events:none;
+}
+.toast{
+  opacity:0;
+  transform:translateY(8px) scale(.98);
+  transition:.18s ease;
+  border:1px solid var(--line);
+  background:rgba(8,17,28,.92);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+  color:var(--text);
+  border-radius:16px;
+  padding:11px 14px;
+  text-align:center;
+  font-size:11px;
+  box-shadow:0 14px 40px rgba(0,0,0,.26);
+}
+.toast.show{opacity:1;transform:none}
+.toast.ok{border-color:rgba(84,215,156,.24);color:#c8f7df}
+.toast.bad{border-color:rgba(255,117,136,.24);color:#ffd4db}
