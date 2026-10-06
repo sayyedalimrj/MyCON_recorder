@@ -1,13 +1,49 @@
 const $ = (id) => document.getElementById(id);
 const panels = [...document.querySelectorAll(".panel")];
 const navs = [...document.querySelectorAll(".nav")];
+const panelIds = new Set(panels.map(p=>p.id));
 
-function go(id){
-  panels.forEach(p=>p.classList.toggle("active",p.id===id));
-  navs.forEach(n=>n.classList.toggle("active",n.dataset.go===id));
-  scrollTo({top:0,behavior:"smooth"});
+function toast(message,tone="default"){
+  let host=document.querySelector(".toast-host");
+  if(!host){
+    host=document.createElement("div");
+    host.className="toast-host";
+    host.setAttribute("aria-live","polite");
+    document.body.appendChild(host);
+  }
+  const item=document.createElement("div");
+  item.className="toast "+tone;
+  item.textContent=message;
+  host.appendChild(item);
+  requestAnimationFrame(()=>item.classList.add("show"));
+  setTimeout(()=>{
+    item.classList.remove("show");
+    setTimeout(()=>item.remove(),180);
+  },1800);
 }
-document.querySelectorAll("[data-go]").forEach(el=>el.addEventListener("click",()=>go(el.dataset.go)));
+
+function tapFeedback(){
+  try{navigator.vibrate?.(8)}catch{}
+}
+
+function go(id,opts={}){
+  if(!panelIds.has(id))id="homePanel";
+  const {hash=true,smooth=true}=opts;
+  panels.forEach(p=>p.classList.toggle("active",p.id===id));
+  navs.forEach(n=>{
+    const active=n.dataset.go===id;
+    n.classList.toggle("active",active);
+    if(active)n.setAttribute("aria-current","page");
+    else n.removeAttribute("aria-current");
+  });
+  if(hash && location.hash!=="#"+id)history.replaceState(null,"","#"+id);
+  scrollTo({top:0,behavior:smooth?"smooth":"auto"});
+}
+document.querySelectorAll("[data-go]").forEach(el=>el.addEventListener("click",()=>{
+  tapFeedback();
+  go(el.dataset.go);
+}));
+window.addEventListener("hashchange",()=>go(location.hash.slice(1),{hash:false,smooth:false}));
 
 function downloadBlob(blob,name){
   const a=document.createElement("a");
@@ -77,17 +113,26 @@ async function renderMarker(){
 }
 $("generateMarker").addEventListener("click",async(e)=>{e.preventDefault();await renderMarker();});
 $("markerForm").addEventListener("change",()=>renderMarker().catch(()=>{}));
-$("copyPayload").addEventListener("click",async()=>{await navigator.clipboard.writeText($("payload").value);});
+$("copyPayload").addEventListener("click",async()=>{
+  try{
+    await navigator.clipboard.writeText($("payload").value);
+    tapFeedback();toast("Payload کپی شد","ok");
+  }catch{
+    toast("کپی انجام نشد","bad");
+  }
+});
 $("downloadQr").addEventListener("click",async()=>{
   await renderMarker();
   const a=document.createElement("a");
   a.download=safeName(value("project")+"_"+value("anchor"))+".png";
   a.href=$("qrCanvas").toDataURL("image/png");
   a.click();
+  tapFeedback();toast("QR آماده شد","ok");
 });
 $("downloadJson").addEventListener("click",async()=>{
   const d=await renderMarker();if(!d)return;
   downloadBlob(new Blob([JSON.stringify(d,null,2)],{type:"application/json"}),safeName(d.project+"_"+d.anchor)+".json");
+  toast("JSON آماده شد","ok");
 });
 $("printQr").addEventListener("click",async()=>{
   const popup=window.open("","_blank");
@@ -122,6 +167,7 @@ $("saveMarker").addEventListener("click",async(e)=>{
   e.preventDefault();const d=await renderMarker();if(!d)return;
   const list=saved().filter(x=>!(x.project===d.project&&x.anchor===d.anchor));
   list.push(d);localStorage.setItem("mycon.markers.v1",JSON.stringify(list.slice(-50)));drawSaved();
+  tapFeedback();toast("کنترل ذخیره شد","ok");
 });
 $("clearSaved").addEventListener("click",()=>{localStorage.removeItem("mycon.markers.v1");drawSaved();});
 
@@ -242,6 +288,7 @@ $("zipInput").addEventListener("change",e=>{const f=e.target.files?.[0];if(f)ins
 $("exportQa").addEventListener("click",()=>{
   if(!currentQA)return;
   downloadBlob(new Blob([JSON.stringify(currentQA,null,2)],{type:"application/json"}),safeName(currentQA.file)+".qa.json");
+  toast("گزارش QA آماده شد","ok");
 });
 
 let modelObjectURL=null;
@@ -439,3 +486,4 @@ addEventListener("online",network);addEventListener("offline",network);
 if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(()=>{}));
 
 drawSaved();drawQaHistory();network();renderMarker().catch(()=>{});
+go(location.hash.slice(1)||"homePanel",{hash:false,smooth:false});
