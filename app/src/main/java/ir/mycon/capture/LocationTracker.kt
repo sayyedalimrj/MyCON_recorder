@@ -25,6 +25,10 @@ class LocationTracker(context: Context) : LocationListener {
 
     fun latest(): LocationSample? = latestRef.get()
 
+    fun clear() {
+        latestRef.set(null)
+    }
+
     @SuppressLint("MissingPermission")
     fun start() {
         try {
