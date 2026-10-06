@@ -26,17 +26,23 @@ class TelemetryRecorder(
     private val locationTracker: LocationTracker
 ) : SensorEventListener {
 
-    private val poseWriter = BufferedWriter(FileWriter(File(sessionDir, "pose.csv")))
-    private val imuWriter = BufferedWriter(FileWriter(File(sessionDir, "imu.csv")))
-    private val qrWriter = BufferedWriter(FileWriter(File(sessionDir, "qr_events.jsonl")))
+    private val poseWriter =
+        BufferedWriter(FileWriter(File(sessionDir, "pose.csv")))
+    private val imuWriter =
+        BufferedWriter(FileWriter(File(sessionDir, "imu.csv")))
+    private val qrWriter =
+        BufferedWriter(FileWriter(File(sessionDir, "qr_events.jsonl")))
+
     private val sensorManager =
         context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
     private val frameCounter = AtomicLong(0)
     private val trackingCounter = AtomicLong(0)
     private val qrCounter = AtomicLong(0)
-    private val anchors = Collections.synchronizedSet(mutableSetOf<String>())
-    private val projects = Collections.synchronizedSet(mutableSetOf<String>())
+    private val anchors =
+        Collections.synchronizedSet(mutableSetOf<String>())
+    private val projects =
+        Collections.synchronizedSet(mutableSetOf<String>())
 
     private val startedUtc = isoNow()
     private val startedElapsedNs = SystemClock.elapsedRealtimeNanos()
@@ -132,17 +138,28 @@ class TelemetryRecorder(
     ): JSONObject {
         val parsed = AnchorPayload.parse(raw)
 
-        val json = JSONObject()
-            .put("timestamp_ns", frameTimestampNs)
-            .put("raw", raw)
-            .put("valid_mycon_anchor", parsed != null)
-            .put(
-                "corners_px",
-                JSONArray(corners.map { JSONArray(listOf(it.first, it.second)) })
-            )
-            .put("camera_pose_arcore_tx_ty_tz_qx_qy_qz_qw", JSONArray(cameraPose.toList()))
-            .put("intrinsics_fx_fy_cx_cy", JSONArray(intrinsics.toList()))
-            .put("image_wh", JSONArray(imageDims.toList()))
+        val json =
+            JSONObject()
+                .put("timestamp_ns", frameTimestampNs)
+                .put("raw", raw)
+                .put("valid_mycon_anchor", parsed != null)
+                .put(
+                    "corners_px",
+                    JSONArray(
+                        corners.map {
+                            JSONArray(listOf(it.first, it.second))
+                        }
+                    )
+                )
+                .put(
+                    "camera_pose_arcore_tx_ty_tz_qx_qy_qz_qw",
+                    JSONArray(cameraPose.toList())
+                )
+                .put(
+                    "intrinsics_fx_fy_cx_cy",
+                    JSONArray(intrinsics.toList())
+                )
+                .put("image_wh", JSONArray(imageDims.toList()))
 
         if (parsed != null) {
             projects += parsed.project
@@ -152,7 +169,10 @@ class TelemetryRecorder(
             json.put("project", parsed.project)
                 .put("anchor", parsed.anchor)
                 .put("crs", parsed.crs)
-                .put("anchor_xyz_m", JSONArray(listOf(parsed.x, parsed.y, parsed.z)))
+                .put(
+                    "anchor_xyz_m",
+                    JSONArray(listOf(parsed.x, parsed.y, parsed.z))
+                )
                 .put("mount", parsed.mount)
                 .put("azimuth_deg", parsed.azimuthDeg)
                 .put("size_mm", parsed.sizeMm)
@@ -168,12 +188,13 @@ class TelemetryRecorder(
     override fun onSensorChanged(event: SensorEvent) {
         if (closed) return
 
-        val name = when (event.sensor.type) {
-            Sensor.TYPE_ACCELEROMETER -> "ACCEL"
-            Sensor.TYPE_GYROSCOPE -> "GYRO"
-            Sensor.TYPE_ROTATION_VECTOR -> "ROT_VEC"
-            else -> return
-        }
+        val name =
+            when (event.sensor.type) {
+                Sensor.TYPE_ACCELEROMETER -> "ACCEL"
+                Sensor.TYPE_GYROSCOPE -> "GYRO"
+                Sensor.TYPE_ROTATION_VECTOR -> "ROT_VEC"
+                else -> return
+            }
 
         synchronized(this) {
             if (closed) return
@@ -206,38 +227,63 @@ class TelemetryRecorder(
         val frames = frameCounter.get()
         val tracked = trackingCounter.get()
 
-        val manifest = JSONObject()
-            .put("format", "MYCON_CAPTURE_SESSION")
-            .put("format_version", 1)
-            .put("app_version", "0.2.0")
-            .put("started_utc", startedUtc)
-            .put("ended_utc", isoNow())
-            .put("started_elapsed_realtime_ns", startedElapsedNs)
-            .put("project_hint", projectHint ?: JSONObject.NULL)
-            .put("projects_seen", JSONArray(projects.toList().sorted()))
-            .put("anchors_seen", JSONArray(anchors.toList().sorted()))
-            .put("video_dataset", mp4Name)
-            .put("pose_file", "pose.csv")
-            .put("imu_file", "imu.csv")
-            .put("qr_events_file", "qr_events.jsonl")
-            .put("frame_count", frames)
-            .put("tracking_frame_count", tracked)
-            .put(
-                "tracking_ratio",
-                if (frames > 0L) tracked.toDouble() / frames.toDouble() else 0.0
-            )
-            .put("valid_qr_event_count", qrCounter.get())
-            .put(
-                "notes",
-                "ARCore world pose is metric but session-local. Surveyed MYCON QR control markers align it to the project coordinate system."
-            )
+        val manifest =
+            JSONObject()
+                .put("format", "MYCON_CAPTURE_SESSION")
+                .put("format_version", 1)
+                .put("app_version", "0.3.0")
+                .put("started_utc", startedUtc)
+                .put("ended_utc", isoNow())
+                .put(
+                    "started_elapsed_realtime_ns",
+                    startedElapsedNs
+                )
+                .put(
+                    "project_hint",
+                    projectHint ?: JSONObject.NULL
+                )
+                .put(
+                    "projects_seen",
+                    JSONArray(projects.toList().sorted())
+                )
+                .put(
+                    "anchors_seen",
+                    JSONArray(anchors.toList().sorted())
+                )
+                .put("video_dataset", mp4Name)
+                .put("pose_file", "pose.csv")
+                .put("imu_file", "imu.csv")
+                .put("qr_events_file", "qr_events.jsonl")
+                .put("frame_count", frames)
+                .put("tracking_frame_count", tracked)
+                .put(
+                    "tracking_ratio",
+                    if (frames > 0L) {
+                        tracked.toDouble() / frames.toDouble()
+                    } else {
+                        0.0
+                    }
+                )
+                .put(
+                    "valid_qr_event_count",
+                    qrCounter.get()
+                )
+                .put(
+                    "notes",
+                    "ARCore world pose is metric but session-local. Surveyed MYCON QR control markers align it to the project coordinate system."
+                )
 
-        File(sessionDir, "session.json").writeText(manifest.toString(2))
+        File(sessionDir, "session.json")
+            .writeText(manifest.toString(2))
     }
 
     companion object {
         private fun isoNow(): String {
-            val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
+            val format =
+                SimpleDateFormat(
+                    "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+                    Locale.US
+                )
             format.timeZone = TimeZone.getTimeZone("UTC")
             return format.format(Date())
         }

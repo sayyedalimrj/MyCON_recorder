@@ -9,8 +9,6 @@ import android.graphics.pdf.PdfDocument
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
-import android.widget.Button
-import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -18,51 +16,80 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.common.BitMatrix
 import com.google.zxing.qrcode.QRCodeWriter
 import java.io.File
 import java.io.FileOutputStream
-import kotlin.math.roundToInt
 
 class QrGeneratorActivity : AppCompatActivity() {
-    private val fields = linkedMapOf<String, EditText>()
+    private val fields = linkedMapOf<String, TextInputEditText>()
     private lateinit var preview: ImageView
     private lateinit var payloadView: TextView
+    private lateinit var settings: AppSettings
+    private var mountMode = "VERTICAL"
 
     private var lastPayload: AnchorPayload? = null
     private var lastModules: BitMatrix? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        settings = AppSettings(this)
+        settings.applyTheme()
         super.onCreate(savedInstanceState)
+        Ui.edgeToEdge(this)
         buildUi()
     }
 
     private fun buildUi() {
-        val column = LinearLayout(this).apply {
+        val scroll = ScrollView(this)
+        val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(28, 28, 28, 28)
+            setPadding(Ui.dp(this@QrGeneratorActivity, 18), Ui.dp(this@QrGeneratorActivity, 18), Ui.dp(this@QrGeneratorActivity, 18), Ui.dp(this@QrGeneratorActivity, 18))
+        }
+        scroll.addView(root)
+        Ui.insetWholeRoot(scroll)
+
+        root.addView(Ui.title(this, "MYCON Control Marker", 25f))
+        root.addView(
+            Ui.label(
+                this,
+                "QR استاندارد برای اتصال Pose محلی ARCore به دستگاه مختصات پروژه. مختصات باید مربوط به مرکز خود سمبل QR باشد.",
+                13f
+            )
+        )
+        Ui.addSpacer(root, 16)
+
+        val formCard = Ui.card(this)
+        val form = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(Ui.dp(this@QrGeneratorActivity, 14), Ui.dp(this@QrGeneratorActivity, 14), Ui.dp(this@QrGeneratorActivity, 14), Ui.dp(this@QrGeneratorActivity, 14))
         }
 
-        column.addView(
-            TextView(this).apply {
-                text = "MYCON Control Marker v1"
-                textSize = 22f
-                gravity = Gravity.CENTER
-                setPadding(0, 0, 0, 18)
-            }
-        )
-
-        fun add(
-            label: String,
+        fun addField(
             key: String,
+            hint: String,
             defaultValue: String,
             numeric: Boolean = false
         ) {
-            column.addView(TextView(this).apply { text = label })
-            val edit = EditText(this).apply {
+            val layout = TextInputLayout(this).apply {
+                this.hint = hint
+                boxBackgroundMode = TextInputLayout.BOX_BACKGROUND_OUTLINE
+                boxStrokeColor = Ui.BLUE
+                setHintTextColor(android.content.res.ColorStateList.valueOf(Ui.MUTED))
+                boxCornerRadiusTopStart = Ui.dp(this@QrGeneratorActivity, 14).toFloat()
+                boxCornerRadiusTopEnd = Ui.dp(this@QrGeneratorActivity, 14).toFloat()
+                boxCornerRadiusBottomStart = Ui.dp(this@QrGeneratorActivity, 14).toFloat()
+                boxCornerRadiusBottomEnd = Ui.dp(this@QrGeneratorActivity, 14).toFloat()
+            }
+            val edit = TextInputEditText(layout.context).apply {
                 setText(defaultValue)
+                setTextColor(Ui.TEXT)
+                setHintTextColor(Ui.MUTED)
                 setSingleLine(true)
                 if (numeric) {
                     inputType =
@@ -72,88 +99,135 @@ class QrGeneratorActivity : AppCompatActivity() {
                 }
             }
             fields[key] = edit
-            column.addView(edit)
+            layout.addView(edit)
+            form.addView(
+                layout,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    bottomMargin = Ui.dp(this@QrGeneratorActivity, 10)
+                }
+            )
         }
 
-        add("شناسه پروژه", "project", "P001")
-        add("شناسه Anchor", "anchor", "A001")
-        add("CRS، مثلاً EPSG:32639 یا LOCAL:P001", "crs", "LOCAL:P001")
-        add("X متر", "x", "0.000", true)
-        add("Y متر", "y", "0.000", true)
-        add("Z متر", "z", "0.000", true)
-        add("نوع نصب: VERTICAL یا HORIZONTAL", "mount", "VERTICAL")
-        add("Azimuth درجه", "azimuth", "0.0", true)
-        add("اندازه واقعی خود سمبل QR، میلی‌متر", "size", "180", true)
-        add("طبقه / زون", "floor", "GF")
+        addField("project", "Project ID", settings.lastProject.ifBlank { "P001" })
+        addField("anchor", "Anchor ID", "A001")
+        addField("crs", "CRS — مثال EPSG:32639 یا LOCAL:P001", "LOCAL:P001")
+        addField("x", "X مرکز QR — متر", "0.000", true)
+        addField("y", "Y مرکز QR — متر", "0.000", true)
+        addField("z", "Z مرکز QR — متر", "0.000", true)
+        addField("azimuth", "Azimuth — درجه", "0.0", true)
+        addField("size", "اندازه خود سمبل QR — میلی‌متر", "180", true)
+        addField("floor", "طبقه / Zone", "GF")
 
-        column.addView(
-            Button(this).apply {
-                text = "ساخت QR استاندارد"
-                setOnClickListener { generate() }
-            }
-        )
+        form.addView(Ui.label(this, "نوع نصب", 13f))
+        Ui.addSpacer(form, 6)
 
+        val mountGroup = MaterialButtonToggleGroup(this).apply {
+            isSingleSelection = true
+            isSelectionRequired = true
+        }
+        val vertical = Ui.button(this, "عمودی", Ui.BLUE).apply {
+            id = android.view.View.generateViewId()
+        }
+        val horizontal = Ui.button(this, "افقی", Ui.SURFACE_2).apply {
+            id = android.view.View.generateViewId()
+        }
+        mountGroup.addView(vertical, LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1f))
+        mountGroup.addView(horizontal, LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1f))
+        mountGroup.check(vertical.id)
+        mountGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            mountMode = if (checkedId == horizontal.id) "HORIZONTAL" else "VERTICAL"
+        }
+        form.addView(mountGroup)
+
+        formCard.addView(form)
+        root.addView(formCard)
+
+        Ui.addSpacer(root, 14)
+
+        val generate = Ui.primaryButton(this, "ساخت Marker").apply {
+            setOnClickListener { generate() }
+        }
+        root.addView(generate, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(this, 60)))
+
+        Ui.addSpacer(root, 14)
+
+        val previewCard = Ui.card(this)
+        val previewBox = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(Ui.dp(this@QrGeneratorActivity, 14), Ui.dp(this@QrGeneratorActivity, 14), Ui.dp(this@QrGeneratorActivity, 14), Ui.dp(this@QrGeneratorActivity, 14))
+        }
         preview = ImageView(this).apply {
             adjustViewBounds = true
-            minimumHeight = 600
+            minimumHeight = Ui.dp(this@QrGeneratorActivity, 260)
+            setBackgroundColor(Color.WHITE)
+            setPadding(Ui.dp(this@QrGeneratorActivity, 10), Ui.dp(this@QrGeneratorActivity, 10), Ui.dp(this@QrGeneratorActivity, 10), Ui.dp(this@QrGeneratorActivity, 10))
         }
-        column.addView(preview)
-
-        payloadView = TextView(this).apply {
+        payloadView = Ui.label(this, "Marker هنوز ساخته نشده.", 11f).apply {
             setTextIsSelectable(true)
-            setPadding(4, 16, 4, 16)
         }
-        column.addView(payloadView)
+        previewBox.addView(preview, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        Ui.addSpacer(previewBox, 10)
+        previewBox.addView(payloadView)
+        previewCard.addView(previewBox)
+        root.addView(previewCard)
 
-        column.addView(
-            TextView(this).apply {
-                text =
-                    "size_mm فقط اندازه خود سمبل QR است. " +
-                        "Quiet Zone چهار ماژولی بیرون آن چاپ می‌شود و جزو اندازه نیست."
-            }
-        )
+        Ui.addSpacer(root, 12)
 
-        column.addView(
-            Button(this).apply {
-                text = "ساخت PDF چاپ 100%"
-                setOnClickListener { createPdfAndShare() }
-            }
-        )
+        val warning = Ui.card(this)
+        val warningText = Ui.label(
+            this,
+            "چاپ باید روی 100% / Actual Size باشد. size_mm فقط ضلع خود سمبل QR است؛ Quiet Zone سفید چهارماژولی بیرون آن قرار می‌گیرد. بعد از چاپ حتماً خط کنترل 100 mm را با خط‌کش اندازه بگیر.",
+            13f
+        ).apply {
+            setPadding(Ui.dp(this@QrGeneratorActivity, 16), Ui.dp(this@QrGeneratorActivity, 14), Ui.dp(this@QrGeneratorActivity, 16), Ui.dp(this@QrGeneratorActivity, 14))
+        }
+        warning.addView(warningText)
+        root.addView(warning)
 
-        val scroll = ScrollView(this)
-        scroll.addView(column)
+        Ui.addSpacer(root, 12)
+
+        val pdf = Ui.button(this, "PDF چاپ دقیق / Share", Ui.GREEN).apply {
+            setOnClickListener { createPdfAndShare() }
+        }
+        root.addView(pdf, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(this, 54)))
+
         setContentView(scroll)
     }
 
+    private fun field(key: String): String =
+        fields.getValue(key).text?.toString()?.trim().orEmpty()
+
     private fun readPayload(): AnchorPayload {
         val payload = AnchorPayload(
-            project = fields.getValue("project").text.toString().trim(),
-            anchor = fields.getValue("anchor").text.toString().trim(),
-            crs = fields.getValue("crs").text.toString().trim(),
-            x = fields.getValue("x").text.toString().toDouble(),
-            y = fields.getValue("y").text.toString().toDouble(),
-            z = fields.getValue("z").text.toString().toDouble(),
-            mount = fields.getValue("mount").text.toString().trim(),
-            azimuthDeg =
-                fields.getValue("azimuth").text.toString().toDouble(),
-            sizeMm = fields.getValue("size").text.toString().toDouble(),
-            floor = fields.getValue("floor").text.toString().trim()
+            project = field("project"),
+            anchor = field("anchor"),
+            crs = field("crs"),
+            x = field("x").toDouble(),
+            y = field("y").toDouble(),
+            z = field("z").toDouble(),
+            mount = mountMode,
+            azimuthDeg = field("azimuth").toDouble(),
+            sizeMm = field("size").toDouble(),
+            floor = field("floor")
         )
 
         require(payload.project.isNotBlank()) { "Project خالی است" }
         require(payload.anchor.isNotBlank()) { "Anchor خالی است" }
         require(payload.crs.isNotBlank()) { "CRS خالی است" }
-        require(payload.sizeMm > 0.0) { "اندازه QR باید مثبت باشد" }
-        require(
-            payload.mount.uppercase() in setOf("VERTICAL", "HORIZONTAL")
-        ) { "نوع نصب باید VERTICAL یا HORIZONTAL باشد" }
+        require(payload.x.isFinite() && payload.y.isFinite() && payload.z.isFinite()) { "XYZ معتبر نیست" }
+        require(payload.azimuthDeg.isFinite()) { "Azimuth معتبر نیست" }
+        require(payload.sizeMm in 50.0..500.0) { "اندازه QR باید بین 50 تا 500 میلی‌متر باشد" }
 
         return payload
     }
 
     private fun makeModules(raw: String): BitMatrix {
         val hints = mapOf(EncodeHintType.MARGIN to 0)
-        // 1x1 asks ZXing for the minimum native module matrix.
         return QRCodeWriter().encode(
             raw,
             BarcodeFormat.QR_CODE,
@@ -193,12 +267,14 @@ class QrGeneratorActivity : AppCompatActivity() {
                 }
             }
 
+            settings.lastProject = payload.project
             lastPayload = payload
             lastModules = modules
             preview.setImageBitmap(bitmap)
             payloadView.text =
-                payload.toQrString() +
-                    "\n\nModules: ${modules.width} × ${modules.height}"
+                "${payload.project} / ${payload.anchor} • ${payload.crs}\n" +
+                    "XYZ: ${payload.x}, ${payload.y}, ${payload.z} m • ${payload.sizeMm} mm\n" +
+                    payload.toQrString()
         } catch (e: Exception) {
             Toast.makeText(
                 this,
@@ -259,9 +335,9 @@ class QrGeneratorActivity : AppCompatActivity() {
         val black = Paint().apply {
             color = Color.BLACK
             style = Paint.Style.FILL
+            strokeWidth = 1.5f
         }
 
-        // Four-module white quiet zone exists around this symbol.
         for (y in 0 until modules.height) {
             for (x in 0 until modules.width) {
                 if (!modules[x, y]) continue
@@ -279,74 +355,31 @@ class QrGeneratorActivity : AppCompatActivity() {
             }
         }
 
+        val titlePaint = Paint().apply {
+            color = Color.BLACK
+            textSize = 16f
+            isFakeBoldText = true
+            textAlign = Paint.Align.CENTER
+        }
         val textPaint = Paint().apply {
             color = Color.BLACK
-            textSize = 13f
+            textSize = 12f
             textAlign = Paint.Align.CENTER
         }
 
-        canvas.drawText(
-            "MYCON CONTROL MARKER v1",
-            pageWidthPt / 2f,
-            55f,
-            textPaint
-        )
-        canvas.drawText(
-            "${payload.project} / ${payload.anchor}   ${payload.crs}",
-            pageWidthPt / 2f,
-            78f,
-            textPaint
-        )
-        canvas.drawText(
-            "XYZ center: ${payload.x}, ${payload.y}, ${payload.z} m",
-            pageWidthPt / 2f,
-            top + totalPt + 32f,
-            textPaint
-        )
-        canvas.drawText(
-            "Mount: ${payload.mount.uppercase()}   Azimuth: ${payload.azimuthDeg}°",
-            pageWidthPt / 2f,
-            top + totalPt + 53f,
-            textPaint
-        )
-        canvas.drawText(
-            "QR SYMBOL: ${payload.sizeMm} mm — print at 100% / Actual Size",
-            pageWidthPt / 2f,
-            top + totalPt + 74f,
-            textPaint
-        )
+        canvas.drawText("MYCON CONTROL MARKER v1", pageWidthPt / 2f, 52f, titlePaint)
+        canvas.drawText("${payload.project} / ${payload.anchor}   ${payload.crs}", pageWidthPt / 2f, 78f, textPaint)
+        canvas.drawText("XYZ center: ${payload.x}, ${payload.y}, ${payload.z} m", pageWidthPt / 2f, top + totalPt + 30f, textPaint)
+        canvas.drawText("Mount: ${payload.mount.uppercase()}   Azimuth: ${payload.azimuthDeg}°", pageWidthPt / 2f, top + totalPt + 50f, textPaint)
+        canvas.drawText("QR SYMBOL: ${payload.sizeMm} mm — PRINT 100% / ACTUAL SIZE", pageWidthPt / 2f, top + totalPt + 70f, textPaint)
 
-        // Independent 100 mm verification bar.
         val verifyBarPt = (100.0 * 72.0 / 25.4).toFloat()
-        val verifyY = pageHeightPt - 80f
+        val verifyY = pageHeightPt - 82f
         val verifyLeft = (pageWidthPt - verifyBarPt) / 2f
-        canvas.drawLine(
-            verifyLeft,
-            verifyY,
-            verifyLeft + verifyBarPt,
-            verifyY,
-            black
-        )
-        canvas.drawLine(
-            verifyLeft,
-            verifyY - 8f,
-            verifyLeft,
-            verifyY + 8f,
-            black
-        )
-        canvas.drawLine(
-            verifyLeft + verifyBarPt,
-            verifyY - 8f,
-            verifyLeft + verifyBarPt,
-            verifyY + 8f,
-            black
-        )
-        canvas.drawText(
-            "VERIFY AFTER PRINT: this bar must measure exactly 100 mm",
-            pageWidthPt / 2f,
-            verifyY - 14f,
-            textPaint
-        )
+        canvas.drawLine(verifyLeft, verifyY, verifyLeft + verifyBarPt, verifyY, black)
+        canvas.drawLine(verifyLeft, verifyY - 8f, verifyLeft, verifyY + 8f, black)
+        canvas.drawLine(verifyLeft + verifyBarPt, verifyY - 8f, verifyLeft + verifyBarPt, verifyY + 8f, black)
+        canvas.drawText("VERIFY AFTER PRINT: this bar must measure exactly 100 mm", pageWidthPt / 2f, verifyY - 15f, textPaint)
 
         document.finishPage(page)
         FileOutputStream(output).use { document.writeTo(it) }
