@@ -1,30 +1,92 @@
-# MyCON Recorder
+# MyCON Recorder Suite 0.9
 
-Professional Android field capture for the MyCON R4 reconstruction/thesis pipeline.
+MyCON is now a cross-platform field-capture suite for the MyCON R4 reconstruction/thesis pipeline:
 
-## v0.7 capture package
+- **Android / ARCore** — primary scientific capture on Android.
+- **iOS / ARKit** — primary scientific capture on iPhone/iPad.
+- **Web / PWA** — project controls, QA, 3D/AR viewing, measurements and a clearly-labeled fallback capture mode.
 
-Every finished session is self-contained:
+The scientific contract remains stable: native Android and iOS emit `MYCON_CAPTURE_SESSION / format_version=1` and use the same `mycon://anchor/v1` survey-control schema.
 
-- `arcore_recording.mp4` — ARCore high-resolution CPU recording stream selected by the scientific camera profile
-- `pose.csv` — synchronized metric ARCore camera centres, rotations, intrinsics, exposure/ISO/frame timing
-- `imu.csv` — accelerometer, gyroscope, rotation-vector stream
-- `qr_events.jsonl` — surveyed MYCON controls, QR corners, intrinsics, solved marker pose and reprojection QA
+## Scientific capture contract
+
+A finished native session is self-contained:
+
+- `arcore_recording.mp4` — legacy filename intentionally retained on both platforms for existing R4 compatibility
+- `pose.csv` — metric session-local camera centres, rotations and intrinsics
+- `imu.csv` — accelerometer / gyroscope / rotation-vector stream
+- `qr_events.jsonl` — surveyed controls, QR corners, solved marker pose and reprojection QA
 - `session.json` — capture/camera/quality manifest
-- `r4_camera.json` — camera/intrinsics bridge metadata
-- `r4_controls.json` — best solved observation for each metric control
-- `r4_compatibility.json` — exact MyCON R4 compatibility contract
-- `integrity_sha256.json` — hashes for scientific sidecars
+- `depth/...` and `depth_summary.json` when supported/enabled
+- `r4_camera.json`
+- `r4_controls.json`
+- `r4_compatibility.json`
+- `integrity_sha256.json`
 - `R4_IMPORT_README.txt`
-- `tools/mycon_r4_bridge.py` — bundled offline bridge
+- `tools/mycon_r4_bridge.py`
 
-The exported file remains `*_MYCON.zip`.
+Large video/depth binaries use deferred hashing; scientific sidecars are SHA-256 hashed immediately.
+
+## Android 0.9
+
+- ARCore Recording & Playback MP4 dataset
+- scientific camera selection and real camera metadata
+- metric ARCore pose + intrinsics
+- IMU + GNSS
+- live blur / lighting / tracking warnings
+- MYCON QR controls with multi-frame stable model anchoring
+- **Raw Depth + confidence recording** on Depth-capable devices
+- depth timestamps preserved so repeated reprojected depth can be rejected
+- local ZIP export and R4 bridge sidecars
+
+Default capture profile remains **Scientific HQ • 30 FPS** with a Motion • 60 FPS alternative where supported.
+
+## iOS 0.9
+
+- SwiftUI + ARKit + RealityKit
+- ARKit world tracking and per-frame intrinsics
+- AVAssetWriter camera recording
+- CoreMotion IMU + CoreLocation GNSS
+- Vision QR detection
+- native planar marker solve and stable multi-frame 3D anchoring
+- live quality score using tracking, feature-point density, motion and lighting
+- path-length / mapping-status / depth HUD
+- **LiDAR Scene Depth** recording with confidence
+- **ARKit scene reconstruction** when supported
+- **RoomPlan** room scan mode with USDZ export
+- exact R4 sidecars and bundled `mycon_r4_bridge.py`
+
+## Web / PWA 0.9
+
+- installable PWA for iPhone, Android and desktop
+- MYCON QR/control builder with Android/iOS checksum parity
+- exact-size print sheet and 100 mm verification bar
+- local `*_MYCON.zip` inspection — no server upload required
+- QA score for capture completeness, tracking, FPS, controls and depth
+- QA history + JSON report export
+- GLB/GLTF/USDZ local viewer
+- WebXR / Scene Viewer / Quick Look AR handoff through `<model-viewer>`
+- automatic model bounding-box dimensions
+- point-to-point 3D measurement on model surfaces
+- browser fallback video + IMU + GNSS capture
+
+### Web capture safety boundary
+
+Browser fallback sessions are deliberately written as:
+
+`MYCON_WEB_FALLBACK_CAPTURE`
+
+with:
+
+- `scientific_6dof = false`
+- `metric_pose_available = false`
+- `not_for_r4_pose_validation = true`
+
+They are documentation/fallback captures and must not be used as ARKit/ARCore Stage-4 pose evidence.
 
 ## MyCON R4 integration
 
-The Recorder **does not replace** Stage 1–7, COLMAP, independent pose validation, or bundle adjustment.
-
-Use the MP4 as the normal MyCON input.
+Recorder data supplements the existing R4 pipeline; it does **not** silently replace Stage 1–7, COLMAP, bundle adjustment or independent pose validation.
 
 After Stage 2:
 
@@ -34,7 +96,7 @@ python tools/mycon_r4_bridge.py SESSION_MYCON.zip \
   --output bridge
 ```
 
-Then set:
+Use:
 
 `POSE_VALIDATOR_JSON_INPUT = '.../bridge/pose_validator.json'`
 
@@ -47,52 +109,21 @@ python tools/mycon_r4_bridge.py SESSION_MYCON.zip \
   --output bridge
 ```
 
-When `stage8_anchors.json` reports `READY`, set:
+When `stage8_anchors.json` reports `READY`:
 
 `ANCHORS_JSON_INPUT = '.../bridge/stage8_anchors.json'`
 
-Current MyCON Stage-8 policy needs at least four fit controls. With seven or more solved controls the bridge reserves three independent controls as holdout.
+Stage 8 requires at least four fit controls. With seven or more solved controls, the bridge reserves three independent holdouts.
 
-See [MyCON R4 bridge contract](docs/MYCON_R4_BRIDGE.md).
+## Builders
 
-## COLMAP policy
+GitHub Actions includes:
 
-- one unchanged Recorder session = one physical camera/intrinsic group;
-- no digital zoom;
-- sequential temporal matching;
-- keep MyCON R4's camera-model hypothesis search;
-- ARCore positions are optional priors/independent validation evidence, never final geometry;
-- surveyed QR controls provide project/metric evidence;
-- bundle adjustment remains authoritative.
-
-The bridge also exports `colmap_pose_priors.json` for controlled pose-prior experiments. It is never injected into the default pipeline silently.
-
-## Capture UI
-
-The capture screen is intentionally minimal:
-
-- compact tracking / project / video HUD;
-- centered camera-style record control;
-- dedicated QR and 3D actions;
-- history and secondary tools moved out of the viewfinder;
-- Material bottom sheets for tools and camera details;
-- warning overlay appears only when action is needed;
-- adaptive max-width panels for landscape/tablet layouts;
-- 48dp+ touch targets and accessibility descriptions.
-
-## 3D control model
-
-A QR-attached model is not continuously re-positioned from noisy QR detections.
-
-The app first collects a stable multi-frame PnP consensus and then creates an ARCore Session Anchor. Rendering follows that Anchor afterwards.
-
-## Scientific camera profiles
-
-Default: **Scientific HQ • 30 FPS**.
-
-Alternative: **Motion • 60 FPS**, with fallback to HQ30 when unsupported.
-
-The app records the actual camera ID, CPU/recorded resolution, GPU preview size, FPS range, exposure, ISO and rolling-shutter metadata.
+- `Build Android APK`
+- `Build iOS` — simulator + unsigned physical-device compile
+- `Build Signed iOS / TestFlight` — Ad Hoc or App Store Connect export; optional TestFlight upload when Apple secrets are configured
+- `Check MyCON Web`
+- `Deploy MyCON Web` — GitHub Pages deployment after Pages is enabled for the repository
 
 ## Validation
 
@@ -102,10 +133,10 @@ python tools/mycon_r4_bridge.py --self-test
 python tools/qr_pose_math_check.py
 ```
 
-## Compatibility
+CI compiles Android and iOS and smoke-tests the web app on feature branches and pull requests.
 
-- Android min SDK: 24
-- ARCore-capable physical device required
-- marker schema: `mycon://anchor/v1`
-- capture session schema remains `MYCON_CAPTURE_SESSION / format_version=1`
-- R4 bridge schema is versioned independently
+## Design references
+
+The suite adopts useful workflow ideas seen in modern capture tools — real-time capture guidance, raw/depth export, room scanning, open 3D viewing and measurements — while keeping MyCON's scientific capture files local, explicit and reproducible.
+
+See `docs/CROSS_PLATFORM_ARCHITECTURE.md` and `THIRD_PARTY_NOTICES.md`.
