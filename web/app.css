@@ -51,3 +51,12 @@ button.primary,button.secondary,button.ghost{border:0;border-radius:14px;padding
   .viewer-card{min-height:360px}
   #modelViewer{min-height:360px}
 }
+
+.measure-hotspot{
+  display:block;
+  width:18px;height:18px;border-radius:50%;
+  border:3px solid #fff;background:#29d3ff;
+  box-shadow:0 0 0 4px rgba(41,211,255,.22),0 4px 16px rgba(0,0,0,.45);
+  pointer-events:none;
+  transform:translate(-50%,-50%);
+}
