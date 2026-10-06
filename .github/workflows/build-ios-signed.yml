@@ -1,4 +1,4 @@
-name: Build Signed iOS IPA
+name: Build Signed iOS / TestFlight
 
 on:
   workflow_dispatch:
@@ -11,16 +11,25 @@ on:
         options:
           - app-store-connect
           - ad-hoc
+      upload_to_testflight:
+        description: Upload exported IPA to App Store Connect / TestFlight
+        required: true
+        default: false
+        type: boolean
 
 jobs:
   signed-ipa:
     runs-on: macos-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
     env:
       BUNDLE_ID: ir.mycon.capture.ios
+
     steps:
       - uses: actions/checkout@v5
-      - run: brew install xcodegen
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
       - name: Check signing secrets
         env:
           CERT: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
@@ -32,40 +41,66 @@ jobs:
           test -n "$CERT_PASS" || (echo "Missing APPLE_CERTIFICATE_PASSWORD" && exit 2)
           test -n "$PROFILE" || (echo "Missing APPLE_PROVISIONING_PROFILE_BASE64" && exit 2)
           test -n "$TEAM" || (echo "Missing APPLE_TEAM_ID" && exit 2)
+
       - name: Install signing identity
         env:
           CERT: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
           CERT_PASS: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
         run: |
+          set -euo pipefail
           KEYCHAIN="$RUNNER_TEMP/mycon.keychain-db"
-          KEYCHAIN_PASS="$(openssl rand -hex 16)"
-          echo "$CERT" | base64 --decode > "$RUNNER_TEMP/cert.p12"
-          echo "$PROFILE" | base64 --decode > "$RUNNER_TEMP/profile.mobileprovision"
+          KEYCHAIN_PASS="$(openssl rand -hex 24)"
+          printf '%s' "$CERT" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          printf '%s' "$PROFILE" | base64 --decode > "$RUNNER_TEMP/profile.mobileprovision"
+
           security create-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN"
           security set-keychain-settings -lut 21600 "$KEYCHAIN"
           security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN"
           security import "$RUNNER_TEMP/cert.p12" -P "$CERT_PASS" -A -t cert -f pkcs12 -k "$KEYCHAIN"
           security list-keychain -d user -s "$KEYCHAIN"
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASS" "$KEYCHAIN"
+
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          UUID=$(/usr/bin/security cms -D -i "$RUNNER_TEMP/profile.mobileprovision" | /usr/libexec/PlistBuddy -c 'Print UUID' /dev/stdin)
+          /usr/bin/security cms -D -i "$RUNNER_TEMP/profile.mobileprovision" > "$RUNNER_TEMP/profile.plist"
+          UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$RUNNER_TEMP/profile.plist")
+          NAME=$(/usr/libexec/PlistBuddy -c 'Print :Name' "$RUNNER_TEMP/profile.plist")
           cp "$RUNNER_TEMP/profile.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
+
           echo "PROFILE_UUID=$UUID" >> "$GITHUB_ENV"
+          echo "PROFILE_NAME=$NAME" >> "$GITHUB_ENV"
+
       - name: Generate Xcode project
         working-directory: ios
         run: xcodegen generate
+
+      - name: Resolve packages
+        working-directory: ios
+        run: xcodebuild -resolvePackageDependencies -project MyCONRecorderIOS.xcodeproj -scheme MyCONRecorderIOS
+
       - name: Archive
         working-directory: ios
         env:
           TEAM: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          xcodebuild             -project MyCONRecorderIOS.xcodeproj             -scheme MyCONRecorderIOS             -configuration Release             -destination 'generic/platform=iOS'             -archivePath "$RUNNER_TEMP/MyCON.xcarchive"             DEVELOPMENT_TEAM="$TEAM"             CODE_SIGN_STYLE=Manual             PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID"             archive
+          set -o pipefail
+          xcodebuild \
+            -project MyCONRecorderIOS.xcodeproj \
+            -scheme MyCONRecorderIOS \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/MyCON.xcarchive" \
+            DEVELOPMENT_TEAM="$TEAM" \
+            CODE_SIGN_STYLE=Manual \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            archive
+
       - name: Export IPA
         env:
           TEAM: ${{ secrets.APPLE_TEAM_ID }}
           METHOD: ${{ inputs.export_method }}
         run: |
+          set -euo pipefail
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -74,12 +109,48 @@ jobs:
             <key>teamID</key><string>$TEAM</string>
             <key>signingStyle</key><string>manual</string>
             <key>provisioningProfiles</key><dict>
-              <key>$BUNDLE_ID</key><string>$PROFILE_UUID</string>
+              <key>$BUNDLE_ID</key><string>$PROFILE_NAME</string>
             </dict>
+            <key>stripSwiftSymbols</key><true/>
           </dict></plist>
           PLIST
-          xcodebuild -exportArchive             -archivePath "$RUNNER_TEMP/MyCON.xcarchive"             -exportPath "$RUNNER_TEMP/export"             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/MyCON.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+
           cp "$RUNNER_TEMP/export/"*.ipa MyCON-Recorder-iOS.ipa
+
+      - name: Validate TestFlight API secrets
+        if: ${{ inputs.upload_to_testflight }}
+        env:
+          KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+          PRIVATE_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY_BASE64 }}
+        run: |
+          test -n "$KEY_ID" || (echo "Missing APPSTORE_API_KEY_ID" && exit 2)
+          test -n "$ISSUER_ID" || (echo "Missing APPSTORE_API_ISSUER_ID" && exit 2)
+          test -n "$PRIVATE_KEY" || (echo "Missing APPSTORE_API_PRIVATE_KEY_BASE64" && exit 2)
+
+      - name: Upload to App Store Connect / TestFlight
+        if: ${{ inputs.upload_to_testflight }}
+        env:
+          KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+          PRIVATE_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY_BASE64 }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          printf '%s' "$PRIVATE_KEY" | base64 --decode > "$HOME/.appstoreconnect/private_keys/AuthKey_$KEY_ID.p8"
+
+          xcrun altool \
+            --upload-app \
+            --type ios \
+            --file MyCON-Recorder-iOS.ipa \
+            --apiKey "$KEY_ID" \
+            --apiIssuer "$ISSUER_ID"
+
       - uses: actions/upload-artifact@v4
         with:
           name: MyCON-Recorder-iOS-IPA
