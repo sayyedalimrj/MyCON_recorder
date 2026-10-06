@@ -562,11 +562,14 @@ Stage 8 requires at least 4 calibration controls for the current MyCon metric ga
             }
             .forEach {
                     file ->
-                val largeMedia =
+                val deferredBinary =
                     file.extension
-                        .equals(
+                        .lowercase() in
+                        setOf(
                             "mp4",
-                            ignoreCase = true
+                            "d16",
+                            "u8",
+                            "f32"
                         )
 
                 rows.put(
@@ -588,7 +591,7 @@ Stage 8 requires at least 4 calibration controls for the current MyCon metric ga
                         )
                         .put(
                             "sha256",
-                            if (largeMedia) {
+                            if (deferredBinary) {
                                 JSONObject.NULL
                             } else {
                                 sha256(
@@ -598,8 +601,8 @@ Stage 8 requires at least 4 calibration controls for the current MyCon metric ga
                         )
                         .put(
                             "hash_policy",
-                            if (largeMedia) {
-                                "DEFERRED_LARGE_MEDIA"
+                            if (deferredBinary) {
+                                "DEFERRED_LARGE_BINARY"
                             } else {
                                 "SHA256"
                             }
