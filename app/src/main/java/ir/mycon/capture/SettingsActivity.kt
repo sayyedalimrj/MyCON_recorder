@@ -401,6 +401,16 @@ class SettingsActivity : AppCompatActivity() {
                     it
             }
         )
+        captureBox.addView(
+            compactSwitch(
+                "Depth / عمق",
+                "Raw Depth + confidence در گوشی‌های پشتیبانی‌شده؛ داده کمکی reconstruction",
+                settings.depthLogging
+            ) {
+                settings.depthLogging =
+                    it
+            }
+        )
         captureCard.addView(
             captureBox
         )
