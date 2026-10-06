@@ -67,23 +67,72 @@ class QrGeneratorActivity : AppCompatActivity() {
         )
         Ui.addSpacer(root, 16)
 
-        val testPreset =
-            Ui.button(
-                this,
-                "پرکردن تست TEST01 / A001 + Cube 1m",
-                Ui.PURPLE
-            ).apply {
-                setOnClickListener {
-                    loadTestOriginPreset()
-                }
-            }
         root.addView(
-            testPreset,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                Ui.dp(this, 52)
+            Ui.title(
+                this,
+                "Test kit سریع",
+                17f
             )
         )
+        root.addView(
+            Ui.label(
+                this,
+                "سه Marker آماده برای تست مدل و Scale؛ A001 مدل دارد، A002/A003 کنترل مقیاس‌اند.",
+                12f
+            )
+        )
+        Ui.addSpacer(root, 8)
+
+        val testRow =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+            }
+
+        fun addTestPresetButton(
+            title: String,
+            anchor: String
+        ) {
+            val button =
+                Ui.button(
+                    this,
+                    title,
+                    if (anchor == "A001") {
+                        Ui.PURPLE
+                    } else {
+                        Ui.SURFACE_2
+                    }
+                ).apply {
+                    setOnClickListener {
+                        loadTestPreset(anchor)
+                    }
+                }
+            testRow.addView(
+                button,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    Ui.dp(this, 50)
+                ).apply {
+                    bottomMargin =
+                        Ui.dp(this@QrGeneratorActivity, 6)
+                }
+            )
+        }
+
+        addTestPresetButton(
+            "A001 • مدل Test Cube 1m • (0,0,0)",
+            "A001"
+        )
+        addTestPresetButton(
+            "A002 • Scale Control • (0.5,0,0)",
+            "A002"
+        )
+        addTestPresetButton(
+            "A003 • Scale Control • (0,0.5,0)",
+            "A003"
+        )
+
+        root.addView(testRow)
 
         Ui.addSpacer(root, 12)
 
@@ -299,23 +348,63 @@ class QrGeneratorActivity : AppCompatActivity() {
         setContentView(scroll)
     }
 
-    private fun loadTestOriginPreset() {
+    private fun loadTestPreset(anchor: String) {
         fields["project"]?.setText("TEST01")
-        fields["anchor"]?.setText("A001")
+        fields["anchor"]?.setText(anchor)
         fields["crs"]?.setText("LOCAL:TEST01")
-        fields["x"]?.setText("0.000")
-        fields["y"]?.setText("0.000")
-        fields["z"]?.setText("0.000")
+
+        when (anchor) {
+            "A002" -> {
+                fields["x"]?.setText("0.500")
+                fields["y"]?.setText("0.000")
+                fields["z"]?.setText("0.000")
+            }
+            "A003" -> {
+                fields["x"]?.setText("0.000")
+                fields["y"]?.setText("0.500")
+                fields["z"]?.setText("0.000")
+            }
+            else -> {
+                fields["x"]?.setText("0.000")
+                fields["y"]?.setText("0.000")
+                fields["z"]?.setText("0.000")
+            }
+        }
+
         fields["azimuth"]?.setText("0.0")
         fields["size"]?.setText("180")
         fields["floor"]?.setText("TEST")
-        if (testCubeButtonId != android.view.View.NO_ID) {
-            modelGroup.check(testCubeButtonId)
+
+        if (
+            testCubeButtonId !=
+            android.view.View.NO_ID
+        ) {
+            if (anchor == "A001") {
+                modelGroup.check(
+                    testCubeButtonId
+                )
+            } else {
+                val firstId =
+                    modelGroup
+                        .getChildAt(0)
+                        ?.id
+                        ?: android.view.View.NO_ID
+                if (
+                    firstId !=
+                    android.view.View.NO_ID
+                ) {
+                    modelGroup.check(firstId)
+                }
+            }
         }
 
         Toast.makeText(
             this,
-            "Preset تست پر شد و Test Cube 1m به QR متصل شد.",
+            if (anchor == "A001") {
+                "A001 آماده شد؛ Test Cube 1m به این QR متصل است."
+            } else {
+                "$anchor آماده شد؛ این Marker فقط برای Scale calibration است."
+            },
             Toast.LENGTH_LONG
         ).show()
     }
@@ -451,7 +540,7 @@ class QrGeneratorActivity : AppCompatActivity() {
         val quietPt = 4f * modulePt
         val totalPt = symbolPt + quietPt * 2f
 
-        if (totalPt > 520f) {
+        if (totalPt > pageWidthPt - 10f) {
             Toast.makeText(
                 this,
                 "QR همراه Quiet Zone برای A4 بزرگ است؛ size_mm را کم کن.",
@@ -509,7 +598,7 @@ class QrGeneratorActivity : AppCompatActivity() {
         canvas.drawText("QR SYMBOL: ${payload.sizeMm} mm — PRINT 100% / ACTUAL SIZE", pageWidthPt / 2f, top + totalPt + 70f, textPaint)
 
         val verifyBarPt = (100.0 * 72.0 / 25.4).toFloat()
-        val verifyY = pageHeightPt - 82f
+        val verifyY = pageHeightPt - 24f
         val verifyLeft = (pageWidthPt - verifyBarPt) / 2f
         canvas.drawLine(verifyLeft, verifyY, verifyLeft + verifyBarPt, verifyY, black)
         canvas.drawLine(verifyLeft, verifyY - 8f, verifyLeft, verifyY + 8f, black)
