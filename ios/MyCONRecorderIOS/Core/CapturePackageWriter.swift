@@ -189,7 +189,7 @@ final class CapturePackageWriter {
         let manifest: [String: Any] = [
             "format": "MYCON_CAPTURE_SESSION",
             "format_version": 1,
-            "app_version": "1.0.0-ios",
+            "app_version": "1.0.1-ios",
             "platform": "ios",
             "tracking_provider": "ARKit",
             "started_utc": startedUTC,
