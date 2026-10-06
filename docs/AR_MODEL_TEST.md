@@ -33,7 +33,7 @@ For the supplied TEST01 kit, print and mount the marker centres as:
 - A002: `(0.500, 0.000, 0.000) m`
 - A003: `(0.000, 0.500, 0.000) m`
 
-All markers use a **180 mm QR symbol**.
+All markers use a **160 mm QR symbol**.
 
 Mount the centres of A002 and A003 exactly 500 mm from A001. A002 is 500 mm to the project +X direction; A003 is 500 mm to +Y.
 
