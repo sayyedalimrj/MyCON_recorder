@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#07111f">
+  <meta name="color-scheme" content="light dark">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="MyCON">
@@ -25,13 +26,18 @@
       </button>
       <div class="top-actions">
         <span id="onlineBadge" class="status-dot">آنلاین</span>
+        <button id="themeToggle" class="theme-toggle" type="button" aria-label="تغییر حالت نمایش" title="System">
+          <svg class="theme-icon theme-system" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H4V5Zm2 2v7h12V7H6Zm3 11h6v2H9v-2Z"/></svg>
+          <svg class="theme-icon theme-sun" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 2h2v3h-2V2Zm0 17h2v3h-2v-3ZM2 11h3v2H2v-2Zm17 0h3v2h-3v-2ZM4.22 5.64l1.42-1.42 2.12 2.12-1.42 1.42-2.12-2.12Zm12.02 12.02 1.42-1.42 2.12 2.12-1.42 1.42-2.12-2.12Zm0-11.32 2.12-2.12 1.42 1.42-2.12 2.12-1.42-1.42ZM4.22 18.36l2.12-2.12 1.42 1.42-2.12 2.12-1.42-1.42ZM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z"/></svg>
+          <svg class="theme-icon theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 2.2A9.6 9.6 0 1 0 21.8 16 8 8 0 0 1 14.7 2.2ZM12 20A7.6 7.6 0 0 1 10.5 5a10 10 0 0 0 7.7 12.2A7.5 7.5 0 0 1 12 20Z"/></svg>
+        </button>
       </div>
     </header>
 
     <section id="homePanel" class="panel active">
       <article class="hero">
         <div class="hero-copy">
-          <span class="kicker">MYCON 0.9</span>
+          <span class="kicker">MYCON 1.0</span>
           <h1>برداشت، کنترل و QA<br>در یک محیط ساده</h1>
           <p>Android، iPhone و Web با یک قرارداد مشترک.</p>
           <div class="hero-actions">
@@ -220,6 +226,26 @@
           <p>GLB، GLTF یا USDZ</p>
         </div>
       </div>
+
+      <article class="surface model-library">
+        <div class="section-heading">
+          <div>
+            <h2>مدل‌های آماده MyCON</h2>
+            <p>مستقیم از GitHub Pages</p>
+          </div>
+          <span class="soft-badge">Built-in</span>
+        </div>
+        <div class="model-picker">
+          <label class="field">
+            <span>مدل</span>
+            <select id="builtinModelSelect">
+              <option value="">در حال دریافت فهرست…</option>
+            </select>
+          </label>
+          <button id="loadBuiltinModel" class="secondary" type="button">باز کردن</button>
+        </div>
+        <div id="modelSourceMessage" class="helper"></div>
+      </article>
 
       <label class="upload-card">
         <input id="modelInput" type="file" accept=".glb,.gltf,.usdz,model/gltf-binary,model/gltf+json">
