@@ -529,11 +529,9 @@ def bridge(
                     # Current MyCon Stage-8 metric gate needs >=4 fit anchors.
                     # Reserve 3 independent holdouts only when >=7 exist.
                     if len(controls) >= 7:
-                        fit_n =
-                            len(controls)-3
+                        fit_n = len(controls) - 3
                     else:
-                        fit_n =
-                            len(controls)
+                        fit_n = len(controls)
 
                     stage8 = {
                         "schema":
