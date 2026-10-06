@@ -30,6 +30,11 @@ jobs:
           grep -q "mycon://anchor/v1" web/app.js
           grep -q "MYCON_WEB_FALLBACK_CAPTURE" web/app.js
           grep -q "mycon.r4.capture_compatibility.v1" web/app.js
+          grep -q "mycon.theme.v1" web/app.js
+          grep -q "MYCON 1.0" web/index.html
+          grep -q "builtinModelSelect" web/index.html
+          python3 -m json.tool web/models/catalog.json >/dev/null
+          python3 -m json.tool web/models/calibration-cube-1m.gltf >/dev/null
       - name: Static HTTP smoke test
         run: |
           python3 -m http.server 8099 --directory web >/tmp/mycon-web.log 2>&1 &
