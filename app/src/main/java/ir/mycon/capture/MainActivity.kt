@@ -263,42 +263,120 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
         Ui.addSpacer(dock, 8)
 
-        val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val qrButton = Ui.button(this, "QR", Ui.SURFACE_2).apply {
-            setOnClickListener {
-                startActivity(Intent(this@MainActivity, QrGeneratorActivity::class.java))
+        val actionsTop =
+            LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
             }
-        }
-        modelButton = Ui.button(this, "مدل AR", Ui.SURFACE_2).apply {
-            isEnabled = false
-            alpha = 0.45f
-            setOnClickListener {
-                toggleModelVisibility()
+        val qrButton =
+            Ui.button(
+                this,
+                "QR پروژه",
+                Ui.SURFACE_2
+            ).apply {
+                setOnClickListener {
+                    startActivity(
+                        Intent(
+                            this@MainActivity,
+                            QrGeneratorActivity::class.java
+                        )
+                    )
+                }
             }
-        }
+        modelButton =
+            Ui.button(
+                this,
+                "مدل AR",
+                Ui.SURFACE_2
+            ).apply {
+                isEnabled = false
+                alpha = 0.45f
+                setOnClickListener {
+                    toggleModelVisibility()
+                }
+            }
 
-        val sessionsButton = Ui.button(this, "برداشت‌ها", Ui.SURFACE_2).apply {
-            setOnClickListener {
-                startActivity(Intent(this@MainActivity, SessionManagerActivity::class.java))
+        val sessionsButton =
+            Ui.button(
+                this,
+                "برداشت‌ها",
+                Ui.SURFACE_2
+            ).apply {
+                setOnClickListener {
+                    startActivity(
+                        Intent(
+                            this@MainActivity,
+                            SessionManagerActivity::class.java
+                        )
+                    )
+                }
             }
-        }
-        exportButton = Ui.button(this, "ZIP", Ui.SURFACE_2).apply {
-            setOnClickListener { shareLatestSession() }
-        }
-        val settingsButton = Ui.button(this, "تنظیمات", Ui.SURFACE_2).apply {
-            setOnClickListener {
-                startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
-            }
-        }
 
-        val actionLp = LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1f).apply {
-            marginEnd = Ui.dp(this@MainActivity, 5)
-        }
-        actions.addView(qrButton, actionLp)
-        actions.addView(modelButton, actionLp)
-        actions.addView(sessionsButton, actionLp)
-        actions.addView(exportButton, actionLp)
-        actions.addView(
+        val topLp =
+            LinearLayout.LayoutParams(
+                0,
+                Ui.dp(this, 48),
+                1f
+            ).apply {
+                marginEnd =
+                    Ui.dp(this@MainActivity, 6)
+            }
+        actionsTop.addView(qrButton, topLp)
+        actionsTop.addView(modelButton, topLp)
+        actionsTop.addView(
+            sessionsButton,
+            LinearLayout.LayoutParams(
+                0,
+                Ui.dp(this, 48),
+                1f
+            )
+        )
+        dock.addView(actionsTop)
+
+        Ui.addSpacer(dock, 7)
+
+        val actionsBottom =
+            LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+            }
+
+        exportButton =
+            Ui.button(
+                this,
+                "خروجی ZIP",
+                Ui.SURFACE_2
+            ).apply {
+                setOnClickListener {
+                    shareLatestSession()
+                }
+            }
+        val settingsButton =
+            Ui.button(
+                this,
+                "تنظیمات",
+                Ui.SURFACE_2
+            ).apply {
+                setOnClickListener {
+                    startActivity(
+                        Intent(
+                            this@MainActivity,
+                            SettingsActivity::class.java
+                        )
+                    )
+                }
+            }
+
+        actionsBottom.addView(
+            exportButton,
+            LinearLayout.LayoutParams(
+                0,
+                Ui.dp(this, 48),
+                1f
+            ).apply {
+                marginEnd =
+                    Ui.dp(this@MainActivity, 6)
+            }
+        )
+        actionsBottom.addView(
             settingsButton,
             LinearLayout.LayoutParams(
                 0,
@@ -306,7 +384,7 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 1f
             )
         )
-        dock.addView(actions)
+        dock.addView(actionsBottom)
         bottomDock.addView(dock)
 
         root.addView(
