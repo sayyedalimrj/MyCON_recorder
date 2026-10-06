@@ -449,7 +449,7 @@ class QrGeneratorActivity : AppCompatActivity() {
             mapOf(
                 EncodeHintType.MARGIN to 0,
                 EncodeHintType.ERROR_CORRECTION to
-                    ErrorCorrectionLevel.L
+                    ErrorCorrectionLevel.M
             )
         return QRCodeWriter().encode(
             raw,
