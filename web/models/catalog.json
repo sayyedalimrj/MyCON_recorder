@@ -1,0 +1,17 @@
+{
+  "schema": "mycon.web.models.v1",
+  "models": [
+    {
+      "id": "calibration-cube-1m",
+      "name": "مکعب کالیبراسیون ۱ متر",
+      "file": "./models/calibration-cube-1m.gltf",
+      "unit": "m",
+      "dimensions_m": [
+        1,
+        1,
+        1
+      ],
+      "description": "مدل نمونه برای تست Viewer، AR و Measurement"
+    }
+  ]
+}
