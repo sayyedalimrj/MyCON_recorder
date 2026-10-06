@@ -1,5 +1,5 @@
-const CACHE="mycon-web-v3-ui";
-const CORE=["./","./index.html","./app.css","./app.js","./manifest.webmanifest","./icon.svg","./models/catalog.json","./models/calibration-cube-1m.gltf"];
+const CACHE="mycon-web-v1.0.1-model-hotfix";
+const CORE=["./","./index.html","./app.css","./app.js","./manifest.webmanifest","./icon.svg","./models/catalog.json","./models/calibration-cube-1m-v2.gltf"];
 const OPTIONAL=[
   "https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.js",
   "https://cdn.jsdelivr.net/npm/jszip@3.10.2/dist/jszip.min.js",
