@@ -21,6 +21,7 @@ import json
 import math
 import re
 import shutil
+import subprocess
 import tempfile
 import zipfile
 from pathlib import Path
@@ -171,6 +172,43 @@ def load_keyframes(path):
             add(x)
     walk(data)
     return sorted(found.items(), key=lambda x:x[1])
+
+
+def probe_video_pts(video_path):
+    """Return video-frame PTS seconds using ffprobe, or None if unavailable."""
+    video_path = Path(video_path)
+    ffprobe = shutil.which("ffprobe")
+    if not ffprobe or not video_path.is_file():
+        return None
+    try:
+        proc = subprocess.run(
+            [
+                ffprobe,
+                "-v", "error",
+                "-select_streams", "v:0",
+                "-show_entries",
+                "frame=best_effort_timestamp_time",
+                "-of", "csv=p=0",
+                str(video_path),
+            ],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=120,
+        )
+        pts = []
+        for raw in proc.stdout.splitlines():
+            raw = raw.strip().split(",")[0]
+            if not raw or raw == "N/A":
+                continue
+            try:
+                pts.append(float(raw))
+            except ValueError:
+                pass
+        return pts if len(pts) >= 2 else None
+    except Exception:
+        return None
 
 
 def nearest_pose(poses, timestamp_ns):
@@ -334,6 +372,7 @@ def bridge(
     fps_override=None,
     video_offset_s=0.0,
     prior_sigma_m=0.10,
+    stage_video=None,
 ):
     import numpy as np
     root,tmp = open_session(Path(session))
@@ -360,11 +399,48 @@ def bridge(
         output.mkdir(parents=True,exist_ok=True)
         keyframes = load_keyframes(stage2_report)
 
+        # Prefer real decoded video timestamps over frame_no/fps when possible.
+        # If Stage 1 uses a clipped segment, pass --stage-video and optionally
+        # --video-offset-s so the clip PTS can be mapped back to the Recorder MP4.
+        pts_source = None
+        video_pts = None
+        if stage_video is not None:
+            video_pts = probe_video_pts(stage_video)
+            if video_pts:
+                pts_source = "STAGE_VIDEO_FFPROBE"
+        elif abs(float(video_offset_s)) < 1e-12:
+            recorder_video = root / manifest.get(
+                "video_dataset",
+                "arcore_recording.mp4",
+            )
+            video_pts = probe_video_pts(recorder_video)
+            if video_pts:
+                pts_source = "RECORDER_MP4_FFPROBE"
+
+        sync_method = (
+            pts_source
+            if video_pts
+            else "FRAME_NUMBER_DIVIDED_BY_FPS"
+        )
+
         validator_poses = {}
         sync = []
         for name,frame_no in keyframes:
+            if (
+                video_pts is not None
+                and 0 <= frame_no < len(video_pts)
+            ):
+                relative_s = (
+                    float(video_offset_s)
+                    + float(video_pts[frame_no])
+                )
+            else:
+                relative_s = (
+                    float(video_offset_s)
+                    + frame_no / fps
+                )
             wanted = first_ts + int(
-                (float(video_offset_s)+frame_no/fps)*1e9
+                relative_s * 1e9
             )
             p = nearest_pose(poses,wanted)
             dt_ms = abs(p["timestamp_ns"]-wanted)/1e6
@@ -398,6 +474,11 @@ def bridge(
             "source":{
                 "fps_used":fps,
                 "video_offset_s":float(video_offset_s),
+                "sync_method":sync_method,
+                "stage_video":
+                    str(stage_video)
+                    if stage_video is not None
+                    else None,
             },
         }
         (output/"pose_validator.json").write_text(
@@ -608,6 +689,12 @@ def bridge(
             "fps_used":fps,
             "video_offset_s":
                 float(video_offset_s),
+            "sync_method":
+                sync_method,
+            "video_pts_count":
+                len(video_pts)
+                if video_pts is not None
+                else 0,
             "keyframes_requested":
                 len(keyframes),
             "keyframes_mapped":
@@ -788,6 +875,12 @@ def main(argv=None):
             "COLMAP text model dir or images.txt",
     )
     parser.add_argument(
+        "--stage-video",
+        type=Path,
+        help=
+            "Exact Stage-1/2 video or clip for ffprobe frame PTS synchronization",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=Path(
@@ -835,6 +928,7 @@ def main(argv=None):
         args.fps,
         args.video_offset_s,
         args.prior_sigma_m,
+        args.stage_video,
     )
     print(
         json.dumps(
