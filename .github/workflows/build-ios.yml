@@ -1,0 +1,53 @@
+name: Build iOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ios/**"
+      - ".github/workflows/build-ios.yml"
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator-build:
+    runs-on: macos-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Xcode version
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Resolve Swift packages
+        working-directory: ios
+        run: xcodebuild -resolvePackageDependencies -project MyCONRecorderIOS.xcodeproj -scheme MyCONRecorderIOS
+
+      - name: Build unsigned simulator app
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild             -project MyCONRecorderIOS.xcodeproj             -scheme MyCONRecorderIOS             -configuration Debug             -sdk iphonesimulator             -destination 'generic/platform=iOS Simulator'             -derivedDataPath build             CODE_SIGNING_ALLOWED=NO             build
+
+      - name: Package simulator app
+        working-directory: ios
+        run: |
+          cd build/Build/Products/Debug-iphonesimulator
+          zip -qry ../../../../MyCON-Recorder-iOS-simulator.zip "MyCON Recorder.app"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MyCON-Recorder-iOS-simulator
+          path: ios/MyCON-Recorder-iOS-simulator.zip
+          if-no-files-found: error
+          retention-days: 14
