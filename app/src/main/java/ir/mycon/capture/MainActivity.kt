@@ -86,6 +86,7 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     private var recordingStartedElapsedMs = 0L
     private var lastUiUpdateElapsedMs = 0L
     private var lastQrSeenElapsedMs = 0L
+    private var lastFeedbackElapsedMs = 0L
     private var lastFeedbackAnchor = ""
 
     private val locationTracker by lazy { LocationTracker(this) }
@@ -354,6 +355,7 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             locationTracker.start()
         } else {
             locationTracker.stop()
+            locationTracker.clear()
         }
     }
 
@@ -733,10 +735,11 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
     private fun performQrFeedback(anchor: String) {
         val now = SystemClock.elapsedRealtime()
-        if (anchor == lastFeedbackAnchor && now - lastQrSeenElapsedMs < 2500L) {
+        if (anchor == lastFeedbackAnchor && now - lastFeedbackElapsedMs < 2500L) {
             return
         }
         lastFeedbackAnchor = anchor
+        lastFeedbackElapsedMs = now
 
         if (settings.hapticFeedback) {
             try {
