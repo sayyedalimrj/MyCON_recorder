@@ -96,7 +96,7 @@ final class CapturePackageWriter {
 
     func recordIMU(timestamp: TimeInterval, sensor: String, values: [Double], accuracy: Int = 3) {
         lock.lock(); defer { lock.unlock() }
-        var v = values.map(String.init)
+        var v = values.map { String($0) }
         while v.count < 4 { v.append("") }
         write(imuHandle, "\(Int64(timestamp * 1_000_000_000)),\(sensor),\(v[0]),\(v[1]),\(v[2]),\(v[3]),\(accuracy)\n")
     }
