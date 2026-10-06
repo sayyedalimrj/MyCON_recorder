@@ -26,6 +26,44 @@ function tapFeedback(){
   try{navigator.vibrate?.(8)}catch{}
 }
 
+const THEME_KEY="mycon.theme.v1";
+const themeMedia=window.matchMedia?.("(prefers-color-scheme: dark)");
+function resolvedTheme(mode){
+  if(mode==="light"||mode==="dark")return mode;
+  return themeMedia?.matches?"dark":"light";
+}
+function applyThemeMode(mode,{persist=false,announce=false}={}){
+  const safe=["system","light","dark"].includes(mode)?mode:"system";
+  const resolved=resolvedTheme(safe);
+  document.documentElement.dataset.themeMode=safe;
+  document.documentElement.dataset.theme=resolved;
+  document.documentElement.style.colorScheme=resolved;
+  const meta=document.querySelector('meta[name="theme-color"]');
+  if(meta)meta.content=resolved==="dark"?"#07111f":"#f5f7fb";
+  const button=$("themeToggle");
+  if(button){
+    const labels={system:"سیستم",light:"روشن",dark:"تیره"};
+    button.title="نمایش: "+labels[safe];
+    button.setAttribute("aria-label","حالت نمایش: "+labels[safe]);
+  }
+  if(persist)localStorage.setItem(THEME_KEY,safe);
+  if(announce){
+    const labels={system:"مطابق سیستم",light:"حالت روشن",dark:"حالت تیره"};
+    toast(labels[safe],"ok");
+  }
+}
+function cycleTheme(){
+  const current=document.documentElement.dataset.themeMode||"system";
+  const next=current==="system"?"light":current==="light"?"dark":"system";
+  tapFeedback();
+  applyThemeMode(next,{persist:true,announce:true});
+}
+applyThemeMode(localStorage.getItem(THEME_KEY)||"system");
+$("themeToggle")?.addEventListener("click",cycleTheme);
+themeMedia?.addEventListener?.("change",()=>{
+  if((document.documentElement.dataset.themeMode||"system")==="system")applyThemeMode("system");
+});
+
 function go(id,opts={}){
   if(!panelIds.has(id))id="homePanel";
   const {hash=true,smooth=true}=opts;
@@ -294,6 +332,63 @@ $("exportQa").addEventListener("click",()=>{
 let modelObjectURL=null;
 let measurementMode=false;
 let measurementPoints=[];
+let builtinModels=[];
+
+async function loadBuiltinCatalog(){
+  const select=$("builtinModelSelect");
+  const message=$("modelSourceMessage");
+  if(!select)return;
+  try{
+    const response=await fetch("./models/catalog.json",{cache:"no-cache"});
+    if(!response.ok)throw new Error("catalog "+response.status);
+    const catalog=await response.json();
+    builtinModels=Array.isArray(catalog.models)?catalog.models:[];
+    select.innerHTML="";
+    if(!builtinModels.length){
+      select.innerHTML='<option value="">مدلی موجود نیست</option>';
+      if(message)message.textContent="فهرست مدل‌ها خالی است.";
+      return;
+    }
+    builtinModels.forEach((model,index)=>{
+      const option=document.createElement("option");
+      option.value=model.id;
+      option.textContent=model.name;
+      if(index===0)option.selected=true;
+      select.appendChild(option);
+    });
+    if(message)message.textContent=builtinModels.length+" مدل آماده";
+  }catch(err){
+    builtinModels=[{
+      id:"calibration-cube-1m",
+      name:"مکعب کالیبراسیون ۱ متر",
+      file:"./models/calibration-cube-1m.gltf",
+      description:"مدل نمونه MyCON"
+    }];
+    select.innerHTML='<option value="calibration-cube-1m">مکعب کالیبراسیون ۱ متر</option>';
+    if(message)message.textContent="فهرست محلی آماده است.";
+  }
+}
+
+function openBuiltinModel(){
+  const select=$("builtinModelSelect");
+  const model=builtinModels.find(x=>x.id===select?.value);
+  if(!model)return;
+  resetModelMeasure();
+  $("modelDimensions").textContent="ابعاد: —";
+  if(modelObjectURL){
+    URL.revokeObjectURL(modelObjectURL);
+    modelObjectURL=null;
+  }
+  const viewer=$("modelViewer");
+  viewer.removeAttribute("ios-src");
+  viewer.setAttribute("src",model.file);
+  $("modelMessage").textContent=model.name+" • GitHub";
+  $("modelSourceMessage").textContent=model.description||"مدل آماده MyCON";
+  tapFeedback();
+  toast("مدل بارگذاری شد","ok");
+}
+$("loadBuiltinModel")?.addEventListener("click",openBuiltinModel);
+loadBuiltinCatalog();
 
 function resetModelMeasure(){
   measurementMode=false;
@@ -318,6 +413,7 @@ function addMeasureHotspot(point,index){
 $("modelInput").addEventListener("change",e=>{
   const file=e.target.files?.[0];if(!file)return;
   resetModelMeasure();
+  if($("modelSourceMessage"))$("modelSourceMessage").textContent="مدل محلی • بدون آپلود";
   $("modelDimensions").textContent="ابعاد: —";
   if(modelObjectURL)URL.revokeObjectURL(modelObjectURL);
   modelObjectURL=URL.createObjectURL(file);
