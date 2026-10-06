@@ -44,6 +44,12 @@ jobs:
       - name: Check QR pose math contract
         run: python tools/qr_pose_math_check.py
 
+      - name: Restore stable debug signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: mycon-debug-keystore-v1
+
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
 
