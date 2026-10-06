@@ -735,3 +735,134 @@ input,select,textarea{-webkit-appearance:none;appearance:none}
 .toast.show{opacity:1;transform:none}
 .toast.ok{border-color:rgba(84,215,156,.24);color:#c8f7df}
 .toast.bad{border-color:rgba(255,117,136,.24);color:#ffd4db}
+
+
+/* ---------- MyCON 1.0 appearance ---------- */
+.theme-toggle{
+  width:40px;height:40px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  display:grid;
+  place-items:center;
+  color:var(--muted);
+  background:rgba(255,255,255,.045);
+  transition:.16s ease;
+}
+.theme-toggle:hover{background:rgba(255,255,255,.085);color:var(--text)}
+.theme-icon{display:none;width:19px;height:19px;fill:currentColor}
+html[data-theme-mode="system"] .theme-system,
+html[data-theme-mode="light"] .theme-sun,
+html[data-theme-mode="dark"] .theme-moon{display:block}
+
+.model-library{margin-top:8px}
+.model-picker{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:10px;
+  align-items:end;
+}
+.model-picker .secondary{min-width:110px}
+
+html[data-theme="light"]{
+  color-scheme:light;
+  --bg:#f5f7fb;
+  --bg-2:#ffffff;
+  --surface:#ffffff;
+  --surface-2:#f4f7fb;
+  --surface-3:#eaf0f7;
+  --glass:rgba(255,255,255,.82);
+  --line:rgba(14,32,55,.10);
+  --line-strong:rgba(14,32,55,.16);
+  --text:#132238;
+  --muted:#66778d;
+  --muted-2:#8997aa;
+  --accent:#2678ea;
+  --accent-2:#236ed5;
+  --accent-soft:rgba(38,120,234,.10);
+  --ok:#168a5b;
+  --warn:#a96800;
+  --bad:#d83a54;
+  --shadow:0 18px 55px rgba(41,61,89,.10);
+}
+html[data-theme="light"] body{
+  background:
+    radial-gradient(900px 520px at 85% -8%,rgba(69,138,231,.13),transparent 55%),
+    radial-gradient(720px 540px at -10% 28%,rgba(88,146,219,.08),transparent 55%),
+    var(--bg);
+}
+html[data-theme="light"] .hero{
+  background:linear-gradient(145deg,rgba(255,255,255,.96),rgba(244,248,253,.96));
+}
+html[data-theme="light"] .hero::after{
+  background:radial-gradient(circle,rgba(65,135,235,.11),transparent 68%);
+}
+html[data-theme="light"] .quick-card,
+html[data-theme="light"] .surface,
+html[data-theme="light"] .qr-surface,
+html[data-theme="light"] .stat,
+html[data-theme="light"] .card.metric,
+html[data-theme="light"] .upload-card{
+  background:rgba(255,255,255,.88);
+}
+html[data-theme="light"] .quick-card:hover,
+html[data-theme="light"] .upload-card:hover{
+  background:#fff;
+}
+html[data-theme="light"] .field input,
+html[data-theme="light"] .field select,
+html[data-theme="light"] textarea{
+  background:rgba(247,249,252,.96);
+}
+html[data-theme="light"] .field input:focus,
+html[data-theme="light"] .field select:focus,
+html[data-theme="light"] textarea:focus{
+  background:#fff;
+}
+html[data-theme="light"] .secondary,
+html[data-theme="light"] .icon-action,
+html[data-theme="light"] .theme-toggle{
+  background:rgba(25,55,90,.035);
+}
+html[data-theme="light"] .secondary:hover,
+html[data-theme="light"] .icon-action:hover,
+html[data-theme="light"] .theme-toggle:hover{
+  background:rgba(25,55,90,.07);
+}
+html[data-theme="light"] .bottom-nav{
+  background:rgba(255,255,255,.88);
+  box-shadow:0 18px 55px rgba(41,61,89,.16);
+}
+html[data-theme="light"] .nav{color:#718197}
+html[data-theme="light"] .nav.active{
+  color:#1f68c5;
+  background:rgba(38,120,234,.10);
+}
+html[data-theme="light"] .camera-hint{
+  color:#e9f2ff;
+  background:rgba(8,20,35,.65);
+}
+html[data-theme="light"] .viewer-card,
+html[data-theme="light"] #modelViewer{
+  background:radial-gradient(circle at 50% 32%,#dce8f7,#edf2f8 68%);
+}
+html[data-theme="light"] .codebox{
+  background:#f5f7fa;
+  color:#40546b;
+}
+html[data-theme="light"] .toast{
+  background:rgba(255,255,255,.94);
+  box-shadow:0 14px 40px rgba(41,61,89,.15);
+}
+html[data-theme="light"] .brand-mark{
+  color:#fff;
+}
+html[data-theme="light"] .scan-cube{
+  border-color:rgba(45,112,205,.42);
+  box-shadow:inset 0 0 42px rgba(77,151,255,.09),0 0 56px rgba(53,125,230,.07);
+}
+html[data-theme="light"] .orbit{border-color:rgba(41,105,194,.10)}
+
+@media(max-width:760px){
+  .model-picker{grid-template-columns:1fr}
+  .model-picker .secondary{width:100%}
+}
