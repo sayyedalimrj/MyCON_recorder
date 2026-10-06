@@ -2,9 +2,16 @@ name: Build Android APK
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "app/**"
+      - "tools/**"
+      - "*.gradle.kts"
+      - ".github/workflows/build-apk.yml"
   push:
     branches:
       - main
+      - "feature/**"
 
 concurrency:
   group: android-build-${{ github.ref }}
