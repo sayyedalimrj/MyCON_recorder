@@ -32,7 +32,10 @@ class QrGeneratorActivity : AppCompatActivity() {
     private lateinit var preview: ImageView
     private lateinit var payloadView: TextView
     private lateinit var settings: AppSettings
+    private lateinit var modelGroup: MaterialButtonToggleGroup
+    private var testCubeButtonId: Int = android.view.View.NO_ID
     private var mountMode = "VERTICAL"
+    private var modelId = ""
 
     private var lastPayload: AnchorPayload? = null
     private var lastModules: BitMatrix? = null
@@ -63,6 +66,26 @@ class QrGeneratorActivity : AppCompatActivity() {
             )
         )
         Ui.addSpacer(root, 16)
+
+        val testPreset =
+            Ui.button(
+                this,
+                "پرکردن تست TEST01 / A001 + Cube 1m",
+                Ui.PURPLE
+            ).apply {
+                setOnClickListener {
+                    loadTestOriginPreset()
+                }
+            }
+        root.addView(
+            testPreset,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                Ui.dp(this, 52)
+            )
+        )
+
+        Ui.addSpacer(root, 12)
 
         val formCard = Ui.card(this)
         val form = LinearLayout(this).apply {
@@ -148,6 +171,78 @@ class QrGeneratorActivity : AppCompatActivity() {
         }
         form.addView(mountGroup)
 
+        Ui.addSpacer(form, 12)
+        form.addView(
+            Ui.label(
+                this,
+                "مدل سه‌بعدی متصل به QR",
+                13f
+            )
+        )
+        Ui.addSpacer(form, 6)
+
+        modelGroup =
+            MaterialButtonToggleGroup(this).apply {
+                isSingleSelection = true
+                isSelectionRequired = true
+            }
+        val noModel =
+            Ui.button(
+                this,
+                "بدون مدل",
+                Ui.SURFACE_2
+            ).apply {
+                id =
+                    android.view.View
+                        .generateViewId()
+            }
+        val testCube =
+            Ui.button(
+                this,
+                "Test Cube 1m",
+                Ui.BLUE
+            ).apply {
+                id =
+                    android.view.View
+                        .generateViewId()
+            }
+
+        testCubeButtonId = testCube.id
+
+        modelGroup.addView(
+            noModel,
+            LinearLayout.LayoutParams(
+                0,
+                Ui.dp(this, 48),
+                1f
+            )
+        )
+        modelGroup.addView(
+            testCube,
+            LinearLayout.LayoutParams(
+                0,
+                Ui.dp(this, 48),
+                1f
+            )
+        )
+        modelGroup.check(noModel.id)
+
+        modelGroup.addOnButtonCheckedListener {
+                _,
+                checkedId,
+                isChecked ->
+            if (!isChecked) {
+                return@addOnButtonCheckedListener
+            }
+            modelId =
+                if (checkedId == testCube.id) {
+                    AnchorPayload.TEST_MODEL_ID
+                } else {
+                    ""
+                }
+        }
+        form.addView(modelGroup)
+
         formCard.addView(form)
         root.addView(formCard)
 
@@ -204,6 +299,27 @@ class QrGeneratorActivity : AppCompatActivity() {
         setContentView(scroll)
     }
 
+    private fun loadTestOriginPreset() {
+        fields["project"]?.setText("TEST01")
+        fields["anchor"]?.setText("A001")
+        fields["crs"]?.setText("LOCAL:TEST01")
+        fields["x"]?.setText("0.000")
+        fields["y"]?.setText("0.000")
+        fields["z"]?.setText("0.000")
+        fields["azimuth"]?.setText("0.0")
+        fields["size"]?.setText("180")
+        fields["floor"]?.setText("TEST")
+        if (testCubeButtonId != android.view.View.NO_ID) {
+            modelGroup.check(testCubeButtonId)
+        }
+
+        Toast.makeText(
+            this,
+            "Preset تست پر شد و Test Cube 1m به QR متصل شد.",
+            Toast.LENGTH_LONG
+        ).show()
+    }
+
     private fun field(key: String): String =
         fields.getValue(key).text?.toString()?.trim().orEmpty()
 
@@ -218,7 +334,14 @@ class QrGeneratorActivity : AppCompatActivity() {
             mount = mountMode,
             azimuthDeg = field("azimuth").toDouble(),
             sizeMm = field("size").toDouble(),
-            floor = field("floor")
+            floor = field("floor"),
+            modelId = modelId,
+            modelSizeM =
+                if (modelId.isBlank()) {
+                    null
+                } else {
+                    1.0
+                }
         )
 
         require(payload.project.isNotBlank()) { "Project خالی است" }
@@ -279,6 +402,13 @@ class QrGeneratorActivity : AppCompatActivity() {
             payloadView.text =
                 "${payload.project} / ${payload.anchor} • ${payload.crs}\n" +
                     "XYZ: ${payload.x}, ${payload.y}, ${payload.z} m • ${payload.sizeMm} mm\n" +
+                    (
+                        if (payload.hasModel()) {
+                            "MODEL: ${payload.modelId} • ${payload.modelSizeM} m\n"
+                        } else {
+                            ""
+                        }
+                    ) +
                     payload.toQrString()
         } catch (e: Exception) {
             Toast.makeText(

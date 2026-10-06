@@ -67,8 +67,26 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     private lateinit var anchorPill: TextView
     private lateinit var recordButton: MaterialButton
     private lateinit var exportButton: MaterialButton
+    private lateinit var modelButton: MaterialButton
+    private lateinit var modelPill: TextView
 
     private val background = BackgroundRenderer()
+    private val modelRenderer = ArModelRenderer()
+    private val scaleCalibrator = MultiAnchorScaleCalibrator()
+    private val modelPoseAccumulators =
+        mutableMapOf<String, PoseAccumulator>()
+
+    @Volatile
+    private var modelVisible = false
+
+    @Volatile
+    private var modelPose: com.google.ar.core.Pose? = null
+
+    @Volatile
+    private var modelPayload: AnchorPayload? = null
+
+    @Volatile
+    private var modelReprojectionErrorPx: Double? = null
     private var arSession: Session? = null
     private var installRequested = false
     private var arResumed = false
@@ -174,7 +192,24 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         Ui.addSpacer(top, 7)
 
         anchorPill = Ui.pill(this, "Anchor —", Ui.PURPLE)
-        top.addView(anchorPill, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        top.addView(
+            anchorPill,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        Ui.addSpacer(top, 7)
+
+        modelPill = Ui.pill(this, "3D Model —", Ui.MUTED)
+        top.addView(
+            modelPill,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
         topCard.addView(top)
 
         root.addView(
@@ -234,6 +269,14 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 startActivity(Intent(this@MainActivity, QrGeneratorActivity::class.java))
             }
         }
+        modelButton = Ui.button(this, "مدل AR", Ui.SURFACE_2).apply {
+            isEnabled = false
+            alpha = 0.45f
+            setOnClickListener {
+                toggleModelVisibility()
+            }
+        }
+
         val sessionsButton = Ui.button(this, "برداشت‌ها", Ui.SURFACE_2).apply {
             setOnClickListener {
                 startActivity(Intent(this@MainActivity, SessionManagerActivity::class.java))
@@ -252,9 +295,17 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             marginEnd = Ui.dp(this@MainActivity, 5)
         }
         actions.addView(qrButton, actionLp)
+        actions.addView(modelButton, actionLp)
         actions.addView(sessionsButton, actionLp)
         actions.addView(exportButton, actionLp)
-        actions.addView(settingsButton, LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1f))
+        actions.addView(
+            settingsButton,
+            LinearLayout.LayoutParams(
+                0,
+                Ui.dp(this, 48),
+                1f
+            )
+        )
         dock.addView(actions)
         bottomDock.addView(dock)
 
@@ -440,6 +491,7 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     override fun onSurfaceCreated(unused: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         background.create()
+        modelRenderer.create()
         try {
             arSession?.setCameraTextureName(background.textureId)
         } catch (_: Exception) {
@@ -479,6 +531,28 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             }
 
             onArFrame(frame)
+
+            val payload = modelPayload
+            val pose = modelPose
+            if (
+                modelVisible &&
+                payload != null &&
+                payload.hasModel() &&
+                pose != null
+            ) {
+                val correction =
+                    scaleCalibrator.scaleCorrection()
+                val trueSizeM =
+                    payload.modelSizeM ?: 1.0
+                val arSideLength =
+                    (trueSizeM / correction)
+                        .toFloat()
+                modelRenderer.draw(
+                    frame.camera,
+                    pose,
+                    arSideLength
+                )
+            }
         } catch (_: Exception) {
         }
     }
@@ -572,6 +646,60 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 if (latestAnchorLabel == "—") Ui.AMBER else Ui.PURPLE
             )
 
+            val payload = modelPayload
+            val controls = scaleCalibrator.count()
+            val correction =
+                scaleCalibrator.scaleCorrection()
+            val rawCorrection =
+                scaleCalibrator.rawScaleCorrectionOrNull()
+            val modelText =
+                if (payload?.hasModel() == true) {
+                    val modelName =
+                        if (
+                            payload.modelId ==
+                            AnchorPayload.TEST_MODEL_ID
+                        ) {
+                            "Test Cube 1m"
+                        } else {
+                            payload.modelId
+                        }
+                    val scaleText =
+                        if (controls >= 2) {
+                            String.format(
+                                Locale.US,
+                                " • %d QR • scale %.3f",
+                                controls,
+                                correction
+                            )
+                        } else {
+                            " • 1 QR"
+                        }
+                    "${if (modelVisible) "3D ON" else "3D READY"} • $modelName$scaleText"
+                } else {
+                    "3D Model —"
+                }
+
+            val modelColor =
+                when {
+                    payload?.hasModel() != true ->
+                        Ui.MUTED
+                    rawCorrection != null &&
+                        !scaleCalibrator.isScalePlausible() ->
+                        Ui.RED
+                    controls >= 3 ->
+                        Ui.GREEN
+                    controls >= 2 ->
+                        Ui.BLUE
+                    else ->
+                        Ui.AMBER
+                }
+
+            Ui.setPill(
+                modelPill,
+                modelText,
+                modelColor
+            )
+
             if (recording) {
                 val elapsed = (now - recordingStartedElapsedMs).coerceAtLeast(0L)
                 val min = elapsed / 60000L
@@ -594,6 +722,32 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             setGuide(
                 "Tracking آماده نیست",
                 "گوشی را آرام به چپ و راست حرکت بده و یک سطح با بافت کافی داخل کادر نگه دار.",
+                Ui.RED
+            )
+            return
+        }
+
+        if (
+            modelVisible &&
+            !scaleCalibrator.isScalePlausible()
+        ) {
+            val raw =
+                scaleCalibrator.rawScaleCorrectionOrNull()
+            setGuide(
+                "Scale calibration مشکوک است",
+                "فاصله QRها با مختصات تعریف‌شده همخوان نیست" +
+                    (
+                        if (raw != null) {
+                            String.format(
+                                Locale.US,
+                                " • factor %.3f",
+                                raw
+                            )
+                        } else {
+                            ""
+                        }
+                    ) +
+                    ". فاصله مرکز Markerها و size_mm را دوباره چک کن.",
                 Ui.RED
             )
             return
@@ -712,6 +866,64 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         lastQrSeenElapsedMs = SystemClock.elapsedRealtime()
         performQrFeedback(latestAnchorLabel)
 
+        val estimate =
+            QrPoseSolver.solve(
+                payload,
+                detection
+            )
+
+        if (estimate != null) {
+            scaleCalibrator.update(
+                payload,
+                estimate
+            )
+
+            if (
+                payload.hasModel() &&
+                payload.modelId ==
+                AnchorPayload.TEST_MODEL_ID
+            ) {
+                val key =
+                    "${payload.project}/${payload.anchor}"
+                val accumulator =
+                    modelPoseAccumulators.getOrPut(key) {
+                        PoseAccumulator(5)
+                    }
+                accumulator.add(
+                    estimate.worldPose
+                )
+
+                modelPose =
+                    accumulator.average()
+                        ?: estimate.worldPose
+                modelPayload = payload
+                modelReprojectionErrorPx =
+                    estimate.reprojectionErrorPx
+
+                runOnUiThread {
+                    modelButton.isEnabled = true
+                    modelButton.alpha = 1f
+                    modelButton.text =
+                        if (modelVisible) {
+                            "مدل: روشن"
+                        } else {
+                            "مدل AR"
+                        }
+                }
+            }
+        } else if (
+            payload.hasModel() &&
+            modelPayload == null
+        ) {
+            runOnUiThread {
+                setGuide(
+                    "QR خوانده شد، Pose مدل رد شد",
+                    "QR را صاف‌تر، کامل‌تر و با نور بهتر داخل کادر بگیر؛ مدل فقط وقتی نشان داده می‌شود که PnP از QA عبور کند.",
+                    Ui.AMBER
+                )
+            }
+        }
+
         if (recording) {
             sessionAnchors += latestAnchorLabel
 
@@ -774,6 +986,57 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 tone?.startTone(ToneGenerator.TONE_PROP_ACK, 90)
             } catch (_: Exception) {
             }
+        }
+    }
+
+    private fun toggleModelVisibility() {
+        val payload = modelPayload
+        val pose = modelPose
+
+        if (
+            payload == null ||
+            !payload.hasModel() ||
+            pose == null
+        ) {
+            toast(
+                "اول QR دارای مدل را اسکن کن. برای تست، TEST01 / A001 را بگیر."
+            )
+            return
+        }
+
+        modelVisible = !modelVisible
+        modelButton.text =
+            if (modelVisible) {
+                "مدل: روشن"
+            } else {
+                "مدل AR"
+            }
+        modelButton.backgroundTintList =
+            ColorStateList.valueOf(
+                if (modelVisible) {
+                    Ui.BLUE
+                } else {
+                    Ui.SURFACE_2
+                }
+            )
+
+        val reproj =
+            modelReprojectionErrorPx
+        if (modelVisible) {
+            toast(
+                "مدل واقعی ${payload.modelSizeM ?: 1.0}m فعال شد" +
+                    (
+                        if (reproj != null) {
+                            String.format(
+                                Locale.US,
+                                " • reproj %.1fpx",
+                                reproj
+                            )
+                        } else {
+                            ""
+                        }
+                    )
+            )
         }
     }
 
