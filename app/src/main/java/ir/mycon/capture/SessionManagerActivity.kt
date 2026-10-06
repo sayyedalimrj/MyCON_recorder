@@ -53,10 +53,22 @@ class SessionManagerActivity : AppCompatActivity() {
             box.addView(Ui.title(this, info.project, 18f))
             box.addView(Ui.label(this, info.startedUtc.ifBlank { info.name }, 12f))
             Ui.addSpacer(box, 8)
-            box.addView(Ui.label(this,
-                "Tracking ${SessionRepository.percent(info.trackingRatio)}  •  QR ${info.qrEvents}  •  Anchor ${info.anchors.size}  •  ${SessionRepository.humanBytes(info.videoBytes)}",
-                13f
-            ))
+            val videoLabel =
+                if (
+                    info.videoWidth > 0 &&
+                    info.videoHeight > 0
+                ) {
+                    "${info.videoWidth}×${info.videoHeight} • ${String.format(java.util.Locale.US, "%.1f", info.observedFps)}fps"
+                } else {
+                    "legacy"
+                }
+            box.addView(
+                Ui.label(
+                    this,
+                    "Tracking ${SessionRepository.percent(info.trackingRatio)}  •  QR ${info.qrEvents}  •  Anchor ${info.anchors.size}  •  $videoLabel  •  ${SessionRepository.humanBytes(info.videoBytes)}",
+                    13f
+                )
+            )
             Ui.addSpacer(box, 12)
 
             val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }

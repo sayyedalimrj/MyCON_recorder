@@ -79,7 +79,32 @@ class SessionSummaryActivity : AppCompatActivity() {
         metric("Tracking", SessionRepository.percent(info.trackingRatio))
         metric("QR events", info.qrEvents.toString())
         metric("Unique anchors", info.anchors.size.toString())
-        metric("Video", SessionRepository.humanBytes(info.videoBytes))
+        metric(
+            "Video stream",
+            if (info.videoWidth > 0 && info.videoHeight > 0) {
+                "${info.videoWidth}×${info.videoHeight} • target ≤${info.targetFpsMax}fps"
+            } else {
+                "legacy / unknown"
+            }
+        )
+        metric(
+            "Observed FPS",
+            if (info.observedFps > 0.0) {
+                String.format(java.util.Locale.US, "%.1f fps", info.observedFps)
+            } else {
+                "—"
+            }
+        )
+        metric(
+            "Avg exposure",
+            if (info.averageExposureMs > 0.0) {
+                String.format(java.util.Locale.US, "%.1f ms", info.averageExposureMs)
+            } else {
+                "—"
+            }
+        )
+        metric("Camera ID", info.cameraId)
+        metric("Video size", SessionRepository.humanBytes(info.videoBytes))
         metrics.addView(mc)
         root.addView(metrics)
 

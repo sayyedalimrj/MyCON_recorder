@@ -35,6 +35,20 @@ class AppSettings(context: Context) {
         get() = prefs.getString("theme", "system") ?: "system"
         set(value) = prefs.edit().putString("theme", value).apply()
 
+    var captureProfile: String
+        get() =
+            prefs.getString(
+                "capture_profile",
+                CaptureProfile.SCIENTIFIC_HQ30.key
+            ) ?: CaptureProfile.SCIENTIFIC_HQ30.key
+        set(value) =
+            prefs.edit()
+                .putString(
+                    "capture_profile",
+                    value
+                )
+                .apply()
+
     var lastProject: String
         get() = prefs.getString("last_project", "") ?: ""
         set(value) = prefs.edit().putString("last_project", value).apply()

@@ -33,6 +33,7 @@ import com.google.android.material.card.MaterialCardView
 import com.google.ar.core.ArCoreApk
 import com.google.ar.core.Config
 import com.google.ar.core.Frame
+import com.google.ar.core.ImageMetadata
 import com.google.ar.core.RecordingConfig
 import com.google.ar.core.Session
 import com.google.ar.core.Track
@@ -65,6 +66,7 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     private lateinit var projectPill: TextView
     private lateinit var gpsPill: TextView
     private lateinit var anchorPill: TextView
+    private lateinit var cameraPill: TextView
     private lateinit var recordButton: MaterialButton
     private lateinit var exportButton: MaterialButton
     private lateinit var modelButton: MaterialButton
@@ -87,6 +89,16 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
     @Volatile
     private var modelReprojectionErrorPx: Double? = null
+
+    @Volatile
+    private var cameraSelection: CameraSelection? = null
+
+    @Volatile
+    private var latestExposureMs: Double? = null
+
+    @Volatile
+    private var latestRotationalBlurPx: Double? = null
+
     private var arSession: Session? = null
     private var installRequested = false
     private var arResumed = false
@@ -188,6 +200,26 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         row1.addView(projectPill, chipLp)
         row1.addView(gpsPill, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         top.addView(row1)
+
+        Ui.addSpacer(top, 7)
+
+        cameraPill =
+            Ui.pill(
+                this,
+                "Video config …",
+                Ui.AMBER
+            ).apply {
+                setOnClickListener {
+                    showCameraInfoDialog()
+                }
+            }
+        top.addView(
+            cameraPill,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
 
         Ui.addSpacer(top, 7)
 
@@ -468,6 +500,25 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     override fun onResume() {
         super.onResume()
         settings = AppSettings(this)
+
+        val activeSelection =
+            cameraSelection
+        if (
+            arSession != null &&
+            activeSelection != null &&
+            activeSelection.requestedProfile !=
+                settings.captureProfile &&
+            !recording
+        ) {
+            try {
+                arSession?.close()
+            } catch (_: Exception) {
+            }
+            arSession = null
+            arResumed = false
+            cameraSelection = null
+        }
+
         qualityMonitor.start()
         resumeArIfPossible()
         refreshExportAvailability()
@@ -513,10 +564,24 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
                 arSession =
                     Session(this).also { session ->
+                        cameraSelection =
+                            runCatching {
+                                ScientificCameraSelector
+                                    .apply(
+                                        this,
+                                        session,
+                                        settings.captureProfile
+                                    )
+                            }.getOrNull()
+
                         val config =
                             Config(session).apply {
-                                focusMode = Config.FocusMode.AUTO
-                                updateMode = Config.UpdateMode.LATEST_CAMERA_IMAGE
+                                focusMode =
+                                    Config.FocusMode.AUTO
+                                updateMode =
+                                    Config.UpdateMode.LATEST_CAMERA_IMAGE
+                                imageStabilizationMode =
+                                    Config.ImageStabilizationMode.OFF
                             }
                         session.configure(config)
                     }
@@ -637,6 +702,7 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
     private fun onArFrame(frame: Frame) {
         latestTrackingState = frame.camera.trackingState
+        updateFrameImageQuality(frame)
 
         if (recording) {
             telemetry?.recordFrame(frame)
@@ -684,6 +750,49 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 projectPill,
                 activeProject?.let { "Project $it" } ?: "Project —",
                 if (activeProject == null) Ui.AMBER else Ui.BLUE
+            )
+
+            val selectedCamera =
+                cameraSelection
+            val cameraText =
+                if (selectedCamera == null) {
+                    "Video config —"
+                } else {
+                    val exposure =
+                        latestExposureMs
+                            ?.let {
+                                String.format(
+                                    Locale.US,
+                                    " • %.1fms",
+                                    it
+                                )
+                            } ?: ""
+                    val fov =
+                        selectedCamera.horizontalFovDeg
+                            ?.let {
+                                String.format(
+                                    Locale.US,
+                                    " • FOV %.0f°",
+                                    it
+                                )
+                            } ?: ""
+                    "Video ${selectedCamera.imageWidth}×${selectedCamera.imageHeight} • ${selectedCamera.fpsMax}fps • Cam ${selectedCamera.cameraId}$fov$exposure"
+                }
+            val cameraColor =
+                when {
+                    selectedCamera == null ->
+                        Ui.AMBER
+                    !selectedCamera.highResolutionCpuStream ->
+                        Ui.RED
+                    selectedCamera.fallbackUsed ->
+                        Ui.AMBER
+                    else ->
+                        Ui.GREEN
+                }
+            Ui.setPill(
+                cameraPill,
+                cameraText,
+                cameraColor
             )
 
             val gpsText: String
@@ -850,6 +959,40 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         }
 
         if (settings.qualityWarnings) {
+            val blurPx =
+                latestRotationalBlurPx
+            if (
+                blurPx != null &&
+                blurPx > 4.0
+            ) {
+                setGuide(
+                    "Motion blur زیاد است",
+                    String.format(
+                        Locale.US,
+                        "برآورد blur چرخشی %.1f px است. گوشی را آرام‌تر حرکت بده یا نور را بیشتر کن تا exposure کوتاه‌تر شود.",
+                        blurPx
+                    ),
+                    Ui.RED
+                )
+                return
+            }
+
+            if (
+                blurPx != null &&
+                blurPx > 2.0
+            ) {
+                setGuide(
+                    "ریسک Motion blur",
+                    String.format(
+                        Locale.US,
+                        "برآورد blur %.1f px • حرکت را نرم‌تر و آهسته‌تر کن.",
+                        blurPx
+                    ),
+                    Ui.AMBER
+                )
+                return
+            }
+
             if (qualityMonitor.angularSpeedDegPerSec > 120f) {
                 setGuide(
                     "حرکت خیلی سریع است",
@@ -906,6 +1049,55 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 Ui.GREEN
             )
         }
+    }
+
+    private fun updateFrameImageQuality(
+        frame: Frame
+    ) {
+        val exposureNs =
+            runCatching {
+                frame.imageMetadata
+                    .getLong(
+                        ImageMetadata
+                            .SENSOR_EXPOSURE_TIME
+                    )
+            }.getOrNull()
+
+        latestExposureMs =
+            exposureNs?.let {
+                it.toDouble() /
+                    1_000_000.0
+            }
+
+        if (
+            exposureNs == null ||
+            exposureNs <= 0L
+        ) {
+            latestRotationalBlurPx =
+                null
+            return
+        }
+
+        val fx =
+            frame.camera
+                .imageIntrinsics
+                .focalLength
+                .getOrNull(0)
+                ?.toDouble()
+                ?: return
+
+        val omegaRadPerSec =
+            qualityMonitor
+                .angularSpeedDegPerSec
+                .toDouble() *
+                Math.PI /
+                180.0
+
+        latestRotationalBlurPx =
+            fx *
+                omegaRadPerSec *
+                exposureNs.toDouble() /
+                1_000_000_000.0
     }
 
     private fun setGuide(title: String, detail: String, color: Int) {
@@ -1067,6 +1259,71 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         }
     }
 
+    private fun showCameraInfoDialog() {
+        val selected =
+            cameraSelection
+        if (selected == null) {
+            toast(
+                "Camera config هنوز آماده نیست."
+            )
+            return
+        }
+
+        val fov =
+            selected.horizontalFovDeg
+                ?.let {
+                    String.format(
+                        Locale.US,
+                        "%.1f°",
+                        it
+                    )
+                } ?: "نامشخص"
+
+        val focal =
+            selected.focalLengthMm
+                ?.let {
+                    String.format(
+                        Locale.US,
+                        "%.2f mm",
+                        it
+                    )
+                } ?: "نامشخص"
+
+        val message =
+            "Profile: ${selected.appliedProfile}\n" +
+                "Camera ID: ${selected.cameraId}\n" +
+                "CPU/Recorded stream: ${selected.imageWidth}×${selected.imageHeight}\n" +
+                "GPU preview: ${selected.textureWidth}×${selected.textureHeight}\n" +
+                "FPS range: ${selected.fpsMin}–${selected.fpsMax}\n" +
+                "Focal: $focal\n" +
+                "Horizontal FOV: $fov\n" +
+                "Logical multi-camera: ${if (selected.logicalMultiCamera) "yes" else "no"}\n" +
+                "Depth usage: ${selected.depthUsage}\n" +
+                "Stereo: ${selected.stereoUsage}\n\n" +
+                selected.note
+
+        AlertDialog.Builder(this)
+            .setTitle(
+                "Scientific camera"
+            )
+            .setMessage(message)
+            .setNegativeButton(
+                "بستن",
+                null
+            )
+            .setPositiveButton(
+                "تنظیم کیفیت"
+            ) { _, _ ->
+                startActivity(
+                    Intent(
+                        this,
+                        SettingsActivity::class.java
+                    )
+                )
+            }
+            .show()
+    }
+
     private fun toggleModelVisibility() {
         val payload = modelPayload
         val pose = modelPose
@@ -1161,9 +1418,51 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         }
     }
 
-    private fun startRecording() {
+    private fun startRecording(
+        allowLowResolution: Boolean = false
+    ) {
         val session =
             arSession ?: return toast("ARCore هنوز آماده نیست.")
+
+        val selectedCamera =
+            cameraSelection
+
+        if (
+            selectedCamera != null &&
+            !selectedCamera.highResolutionCpuStream &&
+            !allowLowResolution
+        ) {
+            AlertDialog.Builder(this)
+                .setTitle("رزولوشن ضبط پایین است")
+                .setMessage(
+                    "این پروفایل روی این گوشی فقط CPU stream با رزولوشن " +
+                        "${selectedCamera.imageWidth}×${selectedCamera.imageHeight} می‌دهد. " +
+                        "برای SfM این کیفیت ضعیف است. می‌توانی پروفایل را در تنظیمات عوض کنی یا با همین محدودیت ادامه بدهی."
+                )
+                .setNegativeButton(
+                    "لغو",
+                    null
+                )
+                .setNeutralButton(
+                    "تنظیمات"
+                ) { _, _ ->
+                    startActivity(
+                        Intent(
+                            this,
+                            SettingsActivity::class.java
+                        )
+                    )
+                }
+                .setPositiveButton(
+                    "ادامه"
+                ) { _, _ ->
+                    startRecording(
+                        allowLowResolution = true
+                    )
+                }
+                .show()
+            return
+        }
 
         if (activeProject.isNullOrBlank()) {
             showProjectDialog()
@@ -1209,7 +1508,8 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 TelemetryRecorder(
                     context = this,
                     sessionDir = dir,
-                    locationTracker = locationTracker
+                    locationTracker = locationTracker,
+                    cameraSelection = cameraSelection
                 )
             recording = true
             recordingStartedElapsedMs = SystemClock.elapsedRealtime()
@@ -1225,7 +1525,15 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 exportButton.alpha = 0.45f
             }
 
-            toast("برداشت شروع شد؛ یک Control QR همین پروژه را در ابتدای مسیر اسکن کن.")
+            val selected =
+                cameraSelection
+            toast(
+                if (selected != null) {
+                    "برداشت شروع شد • ${selected.imageWidth}×${selected.imageHeight} • ${selected.fpsMin}-${selected.fpsMax}fps • Camera ${selected.cameraId}"
+                } else {
+                    "برداشت شروع شد؛ Camera config قابل گزارش نبود."
+                }
+            )
         } catch (e: Exception) {
             try {
                 dir.deleteRecursively()

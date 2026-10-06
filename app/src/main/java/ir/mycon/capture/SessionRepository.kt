@@ -19,7 +19,13 @@ data class SessionInfo(
     val trackingRatio: Double,
     val qrEvents: Long,
     val anchors: List<String>,
-    val videoBytes: Long
+    val videoBytes: Long,
+    val videoWidth: Int,
+    val videoHeight: Int,
+    val targetFpsMax: Int,
+    val observedFps: Double,
+    val averageExposureMs: Double,
+    val cameraId: String
 )
 
 class SessionRepository(private val context: Context) {
@@ -49,6 +55,8 @@ class SessionRepository(private val context: Context) {
         }
         val mp4Name = manifest.optString("video_dataset", "arcore_recording.mp4")
         val video = File(dir, mp4Name)
+        val camera =
+            manifest.optJSONObject("camera_selection")
         SessionInfo(
             dir = dir,
             name = dir.name,
@@ -59,7 +67,13 @@ class SessionRepository(private val context: Context) {
             trackingRatio = manifest.optDouble("tracking_ratio", 0.0),
             qrEvents = manifest.optLong("valid_qr_event_count", 0),
             anchors = anchors,
-            videoBytes = if (video.exists()) video.length() else 0
+            videoBytes = if (video.exists()) video.length() else 0,
+            videoWidth = camera?.optInt("cpu_image_width", 0) ?: 0,
+            videoHeight = camera?.optInt("cpu_image_height", 0) ?: 0,
+            targetFpsMax = camera?.optInt("fps_max", 0) ?: 0,
+            observedFps = manifest.optDouble("observed_frame_rate_fps", 0.0),
+            averageExposureMs = manifest.optDouble("average_exposure_ms", 0.0),
+            cameraId = camera?.optString("camera_id", "—") ?: "—"
         )
     } catch (_: Exception) {
         null
