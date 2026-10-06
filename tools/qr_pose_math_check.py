@@ -22,7 +22,7 @@ def make_payload(anchor: str, x: float, y: float, z: float, model=False) -> str:
     project = "TEST01"
     crs = "LOCAL:TEST01"
     mount = "VERTICAL"
-    size_mm = 180.0
+    size_mm = 160.0
     floor = "TEST"
 
     canonical = "&".join(
@@ -64,9 +64,9 @@ def make_payload(anchor: str, x: float, y: float, z: float, model=False) -> str:
 
 
 EXPECTED = {
-    "A001": "mycon://anchor/v1?project=TEST01&anchor=A001&crs=LOCAL%3ATEST01&x=0&y=0&z=0&mount=VERTICAL&azimuth_deg=0&size_mm=180&floor=TEST&model_id=test_cube_1m&model_size_m=1&sig=8ace1e1e9fb0",
-    "A002": "mycon://anchor/v1?project=TEST01&anchor=A002&crs=LOCAL%3ATEST01&x=0.5&y=0&z=0&mount=VERTICAL&azimuth_deg=0&size_mm=180&floor=TEST&sig=313b34417c7f",
-    "A003": "mycon://anchor/v1?project=TEST01&anchor=A003&crs=LOCAL%3ATEST01&x=0&y=0.5&z=0&mount=VERTICAL&azimuth_deg=0&size_mm=180&floor=TEST&sig=af8a0a53c55f",
+    "A001": "mycon://anchor/v1?project=TEST01&anchor=A001&crs=LOCAL%3ATEST01&x=0&y=0&z=0&mount=VERTICAL&azimuth_deg=0&size_mm=160&floor=TEST&model_id=test_cube_1m&model_size_m=1&sig=aaa8ace2f9b8",
+    "A002": "mycon://anchor/v1?project=TEST01&anchor=A002&crs=LOCAL%3ATEST01&x=0.5&y=0&z=0&mount=VERTICAL&azimuth_deg=0&size_mm=160&floor=TEST&sig=57d29f4f2526",
+    "A003": "mycon://anchor/v1?project=TEST01&anchor=A003&crs=LOCAL%3ATEST01&x=0&y=0.5&z=0&mount=VERTICAL&azimuth_deg=0&size_mm=160&floor=TEST&sig=e1fe477b20e6",
 }
 
 
@@ -199,7 +199,7 @@ def main() -> int:
     assert make_payload("A003", 0, 0.5, 0) == EXPECTED["A003"]
 
     fx, fy, cx, cy = 1100.0, 1080.0, 640.0, 480.0
-    size = 0.180
+    size = 0.160
 
     r_true = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
     t_true = [0.08, -0.03, 2.0]
