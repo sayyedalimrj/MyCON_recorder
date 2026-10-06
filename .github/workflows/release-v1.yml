@@ -2,6 +2,14 @@ name: Publish MyCON 1.0.0
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "app/**"
+      - "ios/**"
+      - "web/**"
+      - "tools/**"
+      - "RELEASE_NOTES_v1.0.0.md"
+      - ".github/workflows/release-v1.yml"
   push:
     branches: [main]
     paths:
@@ -132,6 +140,7 @@ jobs:
           retention-days: 30
 
   release:
+    if: ${{ github.event_name != 'pull_request' }}
     needs: [android, ios, web]
     runs-on: ubuntu-latest
     steps:
