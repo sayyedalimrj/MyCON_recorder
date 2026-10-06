@@ -218,6 +218,12 @@ object R4CompatibilityExporter {
             .toSortedMap()
             .forEach {
                     (key, row) ->
+                val reprojectionError =
+                    row.optDouble(
+                        "marker_reprojection_error_px",
+                        Double.POSITIVE_INFINITY
+                    )
+
                 controlRows.put(
                     JSONObject()
                         .put(
@@ -280,9 +286,9 @@ object R4CompatibilityExporter {
                         .put(
                             "reprojection_error_px",
                             if (
-                                error.isFinite()
+                                reprojectionError.isFinite()
                             ) {
-                                error
+                                reprojectionError
                             } else {
                                 JSONObject.NULL
                             }
