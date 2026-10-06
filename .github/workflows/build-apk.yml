@@ -12,6 +12,14 @@ on:
     branches:
       - main
       - "feature/**"
+    paths:
+      - "app/**"
+      - "tools/**"
+      - "*.gradle.kts"
+      - "gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
+      - ".github/workflows/build-apk.yml"
 
 concurrency:
   group: android-build-${{ github.ref }}
