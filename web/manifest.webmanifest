@@ -1,12 +1,25 @@
 {
-  "name":"MyCON Web Companion",
-  "short_name":"MyCON",
-  "description":"MyCON project controls, QR markers and capture package QA.",
-  "start_url":"./",
-  "scope":"./",
-  "display":"standalone",
-  "background_color":"#06101d",
-  "theme_color":"#07111f",
-  "orientation":"any",
-  "icons":[{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+  "name": "MyCON Field Capture Suite",
+  "short_name": "MyCON",
+  "id": "./",
+  "description": "MyCON QR controls, scientific session QA, 3D/AR viewing and browser fallback capture.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#06101d",
+  "theme_color": "#07111f",
+  "orientation": "any",
+  "categories": [
+    "productivity",
+    "utilities",
+    "photo"
+  ],
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }

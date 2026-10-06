@@ -7,7 +7,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="MyCON">
-  <title>MyCON Web</title>
+  <meta name="description" content="MyCON field capture companion, QR controls, QA, 3D viewer and web fallback capture.">
+  <title>MyCON Web Suite</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./app.css">
@@ -16,7 +17,7 @@
   <main class="shell">
     <header class="topbar">
       <div>
-        <div class="eyebrow">MYCON • FIELD COMPANION</div>
+        <div class="eyebrow">MYCON • FIELD CAPTURE SUITE</div>
         <h1>MyCON Web</h1>
       </div>
       <span id="onlineBadge" class="badge">آنلاین</span>
@@ -25,29 +26,44 @@
     <section id="homePanel" class="panel active">
       <article class="hero card">
         <div>
-          <span class="pill ok">PWA آماده iPhone</span>
-          <h2>داشبورد مشترک MyCON</h2>
-          <p>مدیریت کنترل‌ها، ساخت QR استاندارد، بررسی بسته‌های برداشت و QA. برای Capture علمی شش‌درجه‌آزادی از نسخه Native iOS/Android استفاده کن.</p>
+          <span class="pill ok">PWA • iPhone / Android / Desktop</span>
+          <h2>یک ابزار، سه مسیر Capture</h2>
+          <p>کنترل‌های پروژه، QR استاندارد، QA بسته‌های علمی، 3D Viewer و Capture اضطراری وب. مسیر اصلی علمی همچنان ARKit روی iPhone و ARCore روی Android است.</p>
+          <div class="chips">
+            <span class="badge ok">R4 Contract v1</span>
+            <span class="badge">Local-first</span>
+            <span class="badge">No upload required</span>
+          </div>
         </div>
         <div class="hero-mark">M</div>
       </article>
 
-      <div class="grid two">
+      <div class="grid feature-grid">
         <article class="card">
-          <div class="card-title">ساخت کنترل پروژه</div>
-          <p>Payload استاندارد <code>mycon://anchor/v1</code> با checksum دقیق Android ساخته می‌شود.</p>
-          <button class="primary" data-go="markerPanel">کنترل جدید</button>
+          <div class="card-title">Control / QR</div>
+          <p>ساخت Marker سازگار با Android و iOS، checksum، مدل سه‌بعدی متصل و چاپ 100%.</p>
+          <button class="primary" data-go="markerPanel">ساخت کنترل</button>
         </article>
         <article class="card">
-          <div class="card-title">بررسی برداشت</div>
-          <p>ZIP خروجی MyCON را بدون آپلود سرور، داخل خود مرورگر باز و کنترل کن.</p>
-          <button class="secondary" data-go="inspectPanel">باز کردن ZIP</button>
+          <div class="card-title">Session QA</div>
+          <p>باز کردن <code>*_MYCON.zip</code> به‌صورت local و بررسی Stage/R4/Depth/Integrity.</p>
+          <button class="secondary" data-go="inspectPanel">بررسی بسته</button>
+        </article>
+        <article class="card">
+          <div class="card-title">Web Capture</div>
+          <p>ضبط دوربین + IMU + GNSS برای مواقعی که اپ Native در دسترس نیست.</p>
+          <button class="secondary" data-go="capturePanel">باز کردن دوربین</button>
+        </article>
+        <article class="card">
+          <div class="card-title">3D / AR Viewer</div>
+          <p>باز کردن GLB/GLTF و مشاهده AR روی دستگاه‌های سازگار، بدون آپلود مدل.</p>
+          <button class="secondary" data-go="modelPanel">باز کردن مدل</button>
         </article>
       </div>
 
       <article class="card info">
-        <strong>نصب روی iPhone:</strong>
-        Safari → Share → <b>Add to Home Screen</b>. داده‌های فرم و پروژه‌ها روی همان دستگاه نگه‌داری می‌شوند.
+        <strong>مهم:</strong>
+        Web Capture عمداً با برچسب <code>NON_SCIENTIFIC_6DOF</code> خروجی می‌دهد؛ داده‌ی آن نباید جای Pose متریک ARKit/ARCore در Stage 4 را بگیرد.
       </article>
 
       <article class="card">
@@ -56,6 +72,47 @@
           <button id="clearSaved" class="ghost small">پاک‌کردن</button>
         </div>
         <div id="savedMarkers" class="stack empty">هنوز کنترلی ذخیره نشده.</div>
+      </article>
+
+      <article class="card">
+        <div class="row between">
+          <div class="card-title">QA اخیر</div>
+          <button id="clearQaHistory" class="ghost small">پاک‌کردن</button>
+        </div>
+        <div id="qaHistory" class="stack empty">هنوز بسته‌ای بررسی نشده.</div>
+      </article>
+    </section>
+
+    <section id="capturePanel" class="panel">
+      <article class="card warning-card">
+        <div class="eyebrow">WEB FALLBACK CAPTURE</div>
+        <h2>Capture اضطراری مرورگر</h2>
+        <p>برای مستندسازی سریع روی هر گوشی. ویدئو، IMU و GNSS را بسته‌بندی می‌کند، اما Browser به Pose متریک 6DoF معادل ARKit/ARCore دسترسی ندارد.</p>
+      </article>
+
+      <article class="card camera-card">
+        <video id="cameraPreview" autoplay playsinline muted></video>
+        <div class="camera-overlay">
+          <span id="webCaptureState" class="badge">IDLE</span>
+          <span id="webCaptureTimer" class="badge">00:00</span>
+        </div>
+      </article>
+
+      <div class="grid qa" id="webSensorGrid">
+        <article class="card metric"><div class="label">Motion samples</div><div class="value" id="motionCount">0</div></article>
+        <article class="card metric"><div class="label">GNSS samples</div><div class="value" id="geoCount">0</div></article>
+        <article class="card metric"><div class="label">Camera</div><div class="value small-value" id="cameraMode">—</div></article>
+        <article class="card metric"><div class="label">Scientific pose</div><div class="value bad-text">NO</div></article>
+      </div>
+
+      <article class="card">
+        <label>Project<input id="webProject" value="MYCON_PROJECT"></label>
+        <div class="actions">
+          <button id="startWebCapture" class="primary">شروع Capture</button>
+          <button id="stopWebCapture" class="secondary" disabled>پایان</button>
+          <button id="downloadWebCapture" class="secondary" disabled>دانلود ZIP</button>
+        </div>
+        <div id="webCaptureMessage" class="muted"></div>
       </article>
     </section>
 
@@ -101,9 +158,49 @@
             <button id="copyPayload" class="secondary">Copy</button>
             <button id="downloadQr" class="primary">PNG</button>
             <button id="downloadJson" class="secondary">JSON</button>
+            <button id="printQr" class="secondary">Print 100%</button>
           </div>
           <div id="signatureLine" class="mono mini"></div>
         </div>
+      </article>
+    </section>
+
+    <section id="modelPanel" class="panel">
+      <article class="card">
+        <div class="eyebrow">LOCAL 3D / AR</div>
+        <h2>Model Viewer</h2>
+        <p>مدل روی دستگاه خودت باز می‌شود. برای نمایش کامل داخل صفحه، GLB پیشنهاد می‌شود؛ USDZ روی iPhone برای Quick Look مناسب است.</p>
+        <label class="drop">
+          <input id="modelInput" type="file" accept=".glb,.gltf,.usdz,model/gltf-binary,model/gltf+json">
+          <span>انتخاب GLB / GLTF / USDZ</span>
+        </label>
+        <div id="modelMessage" class="muted"></div>
+      </article>
+
+      <article class="card">
+        <div class="row between">
+          <div class="card-title">Measurements</div>
+          <span id="modelDimensions" class="badge">ابعاد: —</span>
+        </div>
+        <p class="muted">Measure را بزن و دو نقطه روی سطح مدل انتخاب کن. فاصله از مختصات واقعی مدل محاسبه می‌شود.</p>
+        <div class="actions">
+          <button id="measureModel" class="secondary">Measure 2 points</button>
+          <button id="resetMeasure" class="ghost">Reset</button>
+          <span id="measureResult" class="badge">—</span>
+        </div>
+      </article>
+
+      <article class="card viewer-card">
+        <model-viewer id="modelViewer"
+          camera-controls
+          touch-action="pan-y"
+          shadow-intensity="1"
+          exposure="1"
+          ar
+          ar-modes="webxr scene-viewer quick-look"
+          alt="MyCON local 3D model">
+          <button slot="ar-button" class="primary ar-button">نمایش در AR</button>
+        </model-viewer>
       </article>
     </section>
 
@@ -111,12 +208,15 @@
       <article class="card">
         <div class="eyebrow">LOCAL • NO UPLOAD</div>
         <h2>Session Inspector</h2>
-        <p>فایل <code>*_MYCON.zip</code> را انتخاب کن. محتوا فقط داخل مرورگر خوانده می‌شود.</p>
+        <p>فایل <code>*_MYCON.zip</code> را انتخاب کن. محتوا فقط داخل خود مرورگر خوانده می‌شود.</p>
         <label class="drop">
           <input id="zipInput" type="file" accept=".zip,application/zip">
           <span>انتخاب بسته MyCON</span>
         </label>
         <div id="inspectMessage" class="muted"></div>
+        <div class="actions">
+          <button id="exportQa" class="secondary" disabled>Export QA JSON</button>
+        </div>
       </article>
 
       <div id="qaGrid" class="grid qa"></div>
@@ -136,14 +236,17 @@
     </section>
   </main>
 
-  <nav class="bottom-nav">
+  <nav class="bottom-nav five">
     <button class="nav active" data-go="homePanel">خانه</button>
+    <button class="nav" data-go="capturePanel">Capture</button>
     <button class="nav" data-go="markerPanel">QR</button>
+    <button class="nav" data-go="modelPanel">3D</button>
     <button class="nav" data-go="inspectPanel">QA</button>
   </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.2/dist/jszip.min.js"></script>
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.3.1/model-viewer.min.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>

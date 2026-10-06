@@ -1,0 +1,39 @@
+name: Check MyCON Web
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "web/**"
+      - ".github/workflows/check-web.yml"
+  push:
+    branches:
+      - main
+      - "feature/**"
+    paths:
+      - "web/**"
+      - ".github/workflows/check-web.yml"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: JavaScript syntax
+        run: node --check web/app.js
+      - name: Required contract markers
+        run: |
+          grep -q "mycon://anchor/v1" web/app.js
+          grep -q "MYCON_WEB_FALLBACK_CAPTURE" web/app.js
+          grep -q "mycon.r4.capture_compatibility.v1" web/app.js
+      - name: Static HTTP smoke test
+        run: |
+          python3 -m http.server 8099 --directory web >/tmp/mycon-web.log 2>&1 &
+          PID=$!
+          trap "kill $PID" EXIT
+          sleep 1
+          curl --fail --silent http://127.0.0.1:8099/ | grep -q "MyCON Web"

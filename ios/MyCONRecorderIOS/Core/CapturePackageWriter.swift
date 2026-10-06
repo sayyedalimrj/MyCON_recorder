@@ -1,7 +1,6 @@
 import Foundation
 import ARKit
 import CoreLocation
-import CryptoKit
 import ZIPFoundation
 
 final class CapturePackageWriter {
@@ -10,6 +9,7 @@ final class CapturePackageWriter {
     private let poseHandle: FileHandle
     private let imuHandle: FileHandle
     private let qrHandle: FileHandle
+    private let depthRecorder: DepthRecorder
     private let lock = NSLock()
 
     private var frameCount: Int64 = 0
@@ -20,7 +20,7 @@ final class CapturePackageWriter {
     private var lastFrameTimestamp: TimeInterval?
     private var projects = Set<String>()
     private var anchors = Set<String>()
-    private var bestControls: [String: [String: Any]] = [:]
+    private var firstCamera: [String: Any]?
     private let startedUTC = ISO8601DateFormatter().string(from: Date())
 
     init() throws {
@@ -41,6 +41,8 @@ final class CapturePackageWriter {
         poseHandle = try FileHandle(forWritingTo: pose)
         imuHandle = try FileHandle(forWritingTo: imu)
         qrHandle = try FileHandle(forWritingTo: qr)
+        depthRecorder = try DepthRecorder(sessionDir: sessionDir)
+
         write(poseHandle, "frame_index,timestamp_ns,tx_m,ty_m,tz_m,qx,qy,qz,qw,tracking_state,fx_px,fy_px,cx_px,cy_px,image_width_px,image_height_px,exposure_time_ns,iso,frame_duration_ns,rolling_shutter_skew_ns,gps_lat,gps_lon,gps_alt_m,gps_accuracy_m,gps_bearing_deg,gps_speed_mps,gps_time_ms\n")
         write(imuHandle, "timestamp_ns,sensor,v0,v1,v2,v3,accuracy\n")
     }
@@ -57,6 +59,18 @@ final class CapturePackageWriter {
         let q = simd_quatf(transform)
         let K = frame.camera.intrinsics
         let res = frame.camera.imageResolution
+        if firstCamera == nil {
+            firstCamera = [
+                "provider": "ARKit",
+                "camera_id": "ARKitWorldTrackingCamera",
+                "image_width": Int(res.width),
+                "image_height": Int(res.height),
+                "fps_min": 0,
+                "fps_max": 0,
+                "high_resolution_cpu_stream": true,
+                "depth_supported": depthRecorder.supported
+            ]
+        }
 
         let tracking: String
         switch frame.camera.trackingState {
@@ -92,6 +106,10 @@ final class CapturePackageWriter {
         ]
         write(poseHandle, parts.joined(separator: ",") + "\n")
         if frameCount % 30 == 0 { try? poseHandle.synchronize() }
+    }
+
+    func recordDepth(_ frame: ARFrame) {
+        depthRecorder.record(frame)
     }
 
     func recordIMU(timestamp: TimeInterval, sensor: String, values: [Double], accuracy: Int = 3) {
@@ -146,24 +164,6 @@ final class CapturePackageWriter {
             obj["floor"] = p.floor
             obj["model_id"] = p.modelId.isEmpty ? NSNull() : p.modelId
             obj["model_size_m"] = p.modelSizeM ?? NSNull()
-
-            if let solve, solve.reprojectionErrorPx <= 5 {
-                let key = "\(p.project)/\(p.anchor)"
-                let candidate: [String: Any] = [
-                    "project": p.project, "anchor": p.anchor, "crs": p.crs,
-                    "project_xyz_m": [p.x,p.y,p.z],
-                    "size_mm": p.sizeMm,
-                    "marker_pose_local_tx_ty_tz_qx_qy_qz_qw": obj["marker_pose_arcore_tx_ty_tz_qx_qy_qz_qw"]!,
-                    "reprojection_error_px": solve.reprojectionErrorPx,
-                    "timestamp_ns": Int64(frame.timestamp * 1_000_000_000)
-                ]
-                if let old = bestControls[key],
-                   let oldError = old["reprojection_error_px"] as? Float,
-                   oldError <= solve.reprojectionErrorPx {
-                } else {
-                    bestControls[key] = candidate
-                }
-            }
         }
 
         if let data = try? JSONSerialization.data(withJSONObject: obj),
@@ -177,15 +177,19 @@ final class CapturePackageWriter {
         lock.lock()
         try? poseHandle.synchronize(); try? imuHandle.synchronize(); try? qrHandle.synchronize()
         try? poseHandle.close(); try? imuHandle.close(); try? qrHandle.close()
+        depthRecorder.close()
 
         let elapsed = max(0, lastFrameNs - firstFrameNs)
         let fps = frameCount > 1 && elapsed > 0 ? Double(frameCount - 1) * 1_000_000_000 / Double(elapsed) : 0
         let trackingRatio = frameCount > 0 ? Double(trackingCount) / Double(frameCount) : 0
+        var camera = firstCamera ?? ["provider": "ARKit"]
+        camera["fps_min"] = fps
+        camera["fps_max"] = fps
 
         let manifest: [String: Any] = [
             "format": "MYCON_CAPTURE_SESSION",
             "format_version": 1,
-            "app_version": "0.8.0-ios",
+            "app_version": "0.9.0-ios",
             "platform": "ios",
             "tracking_provider": "ARKit",
             "started_utc": startedUTC,
@@ -204,6 +208,13 @@ final class CapturePackageWriter {
             "tracking_ratio": trackingRatio,
             "observed_frame_rate_fps": fps,
             "valid_qr_event_count": validQRCount,
+            "camera_selection": camera,
+            "depth_capture": [
+                "supported": depthRecorder.supported,
+                "sample_count": depthRecorder.sampleCount,
+                "index": "depth/depth_index.jsonl",
+                "sample_interval_s": 0.20
+            ],
             "capture_controls": [
                 "focus_mode": "ARKIT_MANAGED",
                 "torch_enabled": false,
@@ -217,64 +228,12 @@ final class CapturePackageWriter {
                 "use_full_resolution": true,
                 "pose_prior_policy": "PRIOR_NOT_GROUND_TRUTH"
             ],
-            "notes": "ARKit camera pose is metric but session-local. Surveyed MYCON QR controls align it to the project coordinate system. The legacy video filename is preserved for MyCON R4 compatibility."
+            "notes": "ARKit world pose is metric but session-local. Surveyed MYCON QR control markers align it to the project coordinate system. Optional LiDAR scene depth is stored as auxiliary geometry evidence only."
         ]
         try writeJSON(manifest, name: "session.json")
-
-        let camera: [String: Any] = [
-            "schema": "MYCON_R4_CAMERA",
-            "version": 1,
-            "platform": "ios",
-            "provider": "ARKit",
-            "pose_convention": "camera_in_world_tx_ty_tz_qx_qy_qz_qw",
-            "intrinsics_source": "ARFrame.camera.intrinsics",
-            "video_file": "arcore_recording.mp4",
-            "pose_file": "pose.csv"
-        ]
-        try writeJSON(camera, name: "r4_camera.json")
-
-        let controls: [String: Any] = [
-            "schema": "MYCON_R4_CONTROLS",
-            "version": 1,
-            "controls": Array(bestControls.values)
-        ]
-        try writeJSON(controls, name: "r4_controls.json")
-
-        let compat: [String: Any] = [
-            "schema": "MYCON_R4_COMPATIBILITY",
-            "version": 1,
-            "capture_format": "MYCON_CAPTURE_SESSION",
-            "capture_format_version": 1,
-            "stage2_image_pattern": "frame_%08d.jpg",
-            "video_file": "arcore_recording.mp4",
-            "pose_file": "pose.csv",
-            "qr_events_file": "qr_events.jsonl",
-            "platform_note": "ARKit replaces ARCore only at acquisition. Downstream Stage 1-8 contract remains unchanged."
-        ]
-        try writeJSON(compat, name: "r4_compatibility.json")
-
-        let readme = """
-        MyCON Recorder iOS package
-        ==========================
-        Use arcore_recording.mp4 as the normal MyCON R4 video input.
-        The filename is intentionally preserved for compatibility.
-        pose.csv contains ARKit session-local metric camera poses.
-        QR controls use the same mycon://anchor/v1 schema as Android.
-        ARKit poses are priors/validation evidence, not final geometry.
-        """
-        try readme.write(to: sessionDir.appendingPathComponent("R4_IMPORT_README.txt"), atomically: true, encoding: .utf8)
-
-        let integrityNames = ["pose.csv","imu.csv","qr_events.jsonl","session.json","r4_camera.json","r4_controls.json","r4_compatibility.json"]
-        var hashes: [String: Any] = [:]
-        for name in integrityNames {
-            let url = sessionDir.appendingPathComponent(name)
-            if let data = try? Data(contentsOf: url) {
-                hashes[name] = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
-            }
-        }
-        hashes["arcore_recording.mp4"] = "DEFERRED_LARGE_MEDIA"
-        try writeJSON(hashes, name: "integrity_sha256.json")
         lock.unlock()
+
+        try R4CompatibilityExporter.write(sessionDir: sessionDir)
 
         let zipURL = sessionDir.deletingLastPathComponent()
             .appendingPathComponent(sessionDir.lastPathComponent + "_MYCON.zip")
