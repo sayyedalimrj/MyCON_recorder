@@ -27,6 +27,10 @@ class AppSettings(context: Context) {
         get() = prefs.getBoolean("keep_screen_on", true)
         set(value) = prefs.edit().putBoolean("keep_screen_on", value).apply()
 
+    var depthLogging: Boolean
+        get() = prefs.getBoolean("depth_logging", true)
+        set(value) = prefs.edit().putBoolean("depth_logging", value).apply()
+
     var qualityWarnings: Boolean
         get() = prefs.getBoolean("quality_warnings", true)
         set(value) = prefs.edit().putBoolean("quality_warnings", value).apply()
