@@ -2,16 +2,16 @@
   "schema": "mycon.web.models.v1",
   "models": [
     {
-      "id": "calibration-cube-1m",
+      "id": "calibration-cube-1m-v2",
       "name": "مکعب کالیبراسیون ۱ متر",
-      "file": "./models/calibration-cube-1m.gltf",
+      "file": "./models/calibration-cube-1m-v2.gltf",
       "unit": "m",
       "dimensions_m": [
         1,
         1,
         1
       ],
-      "description": "مدل نمونه برای تست Viewer، AR و Measurement"
+      "description": "مکعب استاندارد ۱×۱×۱ متر با ۶ وجه، Normal صحیح و ۱۲ مثلث کامل؛ مناسب تست Viewer، AR و Measurement."
     }
   ]
 }
