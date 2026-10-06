@@ -20,17 +20,76 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 
 object Ui {
-    val BG = Color.parseColor("#0A0F1A")
-    val SURFACE = Color.parseColor("#D9161E2D")
-    val SURFACE_SOLID = Color.parseColor("#161E2D")
-    val SURFACE_2 = Color.parseColor("#202B3D")
-    val TEXT = Color.parseColor("#F8FAFC")
-    val MUTED = Color.parseColor("#A8B3C7")
-    val GREEN = Color.parseColor("#22C55E")
-    val AMBER = Color.parseColor("#F59E0B")
-    val RED = Color.parseColor("#EF4444")
-    val BLUE = Color.parseColor("#38BDF8")
-    val PURPLE = Color.parseColor("#A78BFA")
+    var isDark: Boolean = true
+        private set
+
+    var BG = Color.parseColor("#0A0F1A")
+        private set
+    var SURFACE = Color.parseColor("#D9161E2D")
+        private set
+    var SURFACE_SOLID = Color.parseColor("#161E2D")
+        private set
+    var SURFACE_2 = Color.parseColor("#202B3D")
+        private set
+    var TEXT = Color.parseColor("#F8FAFC")
+        private set
+    var MUTED = Color.parseColor("#A8B3C7")
+        private set
+    var GREEN = Color.parseColor("#22C55E")
+        private set
+    var AMBER = Color.parseColor("#F59E0B")
+        private set
+    var RED = Color.parseColor("#EF4444")
+        private set
+    var BLUE = Color.parseColor("#38BDF8")
+        private set
+    var PURPLE = Color.parseColor("#A78BFA")
+        private set
+
+    fun applyPalette(
+        context: Context,
+        mode: String
+    ) {
+        val systemDark =
+            (
+                context.resources.configuration.uiMode and
+                    android.content.res.Configuration.UI_MODE_NIGHT_MASK
+                ) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+
+        isDark =
+            when (mode) {
+                "light" -> false
+                "dark" -> true
+                else -> systemDark
+            }
+
+        if (isDark) {
+            BG = Color.parseColor("#0A0F1A")
+            SURFACE = Color.parseColor("#D9161E2D")
+            SURFACE_SOLID = Color.parseColor("#161E2D")
+            SURFACE_2 = Color.parseColor("#202B3D")
+            TEXT = Color.parseColor("#F8FAFC")
+            MUTED = Color.parseColor("#A8B3C7")
+            GREEN = Color.parseColor("#22C55E")
+            AMBER = Color.parseColor("#F59E0B")
+            RED = Color.parseColor("#EF4444")
+            BLUE = Color.parseColor("#38BDF8")
+            PURPLE = Color.parseColor("#A78BFA")
+        } else {
+            BG = Color.parseColor("#F4F7FB")
+            SURFACE = Color.parseColor("#F2FFFFFF")
+            SURFACE_SOLID = Color.parseColor("#FFFFFF")
+            SURFACE_2 = Color.parseColor("#EAF0F7")
+            TEXT = Color.parseColor("#132238")
+            MUTED = Color.parseColor("#66778D")
+            GREEN = Color.parseColor("#168A5B")
+            AMBER = Color.parseColor("#A96800")
+            RED = Color.parseColor("#D83A54")
+            BLUE = Color.parseColor("#2678EA")
+            PURPLE = Color.parseColor("#7357C9")
+        }
+    }
 
     fun dp(context: Context, value: Int): Int =
         (value * context.resources.displayMetrics.density).toInt()
@@ -55,7 +114,11 @@ object Ui {
             radius = dp(context, 20).toFloat()
             cardElevation = dp(context, 4).toFloat()
             strokeWidth = dp(context, 1)
-            strokeColor = ColorUtils.setAlphaComponent(Color.WHITE, 28)
+            strokeColor =
+                ColorUtils.setAlphaComponent(
+                    if (isDark) Color.WHITE else Color.BLACK,
+                    if (isDark) 28 else 22
+                )
             setCardBackgroundColor(if (alphaSurface) SURFACE else SURFACE_SOLID)
         }
 
@@ -220,8 +283,8 @@ object Ui {
             activity.window,
             activity.window.decorView
         ).apply {
-            isAppearanceLightStatusBars = false
-            isAppearanceLightNavigationBars = false
+            isAppearanceLightStatusBars = !isDark
+            isAppearanceLightNavigationBars = !isDark
         }
     }
 

@@ -1,4 +1,4 @@
-# MyCON Recorder Suite 0.9
+# MyCON Recorder Suite 1.0
 
 MyCON is now a cross-platform field-capture suite for the MyCON R4 reconstruction/thesis pipeline:
 
@@ -27,7 +27,7 @@ A finished native session is self-contained:
 
 Large video/depth binaries use deferred hashing; scientific sidecars are SHA-256 hashed immediately.
 
-## Android 0.9
+## Android 1.0
 
 - ARCore Recording & Playback MP4 dataset
 - scientific camera selection and real camera metadata
@@ -41,7 +41,7 @@ Large video/depth binaries use deferred hashing; scientific sidecars are SHA-256
 
 Default capture profile remains **Scientific HQ • 30 FPS** with a Motion • 60 FPS alternative where supported.
 
-## iOS 0.9
+## iOS 1.0
 
 - SwiftUI + ARKit + RealityKit
 - ARKit world tracking and per-frame intrinsics
@@ -56,7 +56,7 @@ Default capture profile remains **Scientific HQ • 30 FPS** with a Motion • 6
 - **RoomPlan** room scan mode with USDZ export
 - exact R4 sidecars and bundled `mycon_r4_bridge.py`
 
-## Web / PWA 0.9
+## Web / PWA 1.0
 
 - installable PWA for iPhone, Android and desktop
 - MYCON QR/control builder with Android/iOS checksum parity
@@ -140,3 +140,12 @@ CI compiles Android and iOS and smoke-tests the web app on feature branches and 
 The suite adopts useful workflow ideas seen in modern capture tools — real-time capture guidance, raw/depth export, room scanning, open 3D viewing and measurements — while keeping MyCON's scientific capture files local, explicit and reproducible.
 
 See `docs/CROSS_PLATFORM_ARCHITECTURE.md` and `THIRD_PARTY_NOTICES.md`.
+
+
+## MyCON 1.0 additions
+
+- System / Light / Dark appearance on Web and native apps.
+- Built-in GitHub-hosted 3D model catalog in MyCON Web.
+- 1 m calibration cube included for immediate Viewer / AR / measurement testing.
+- Version-aligned Android, iOS and capture manifests at 1.0.0.
+- GitHub Release workflow publishes Android, iOS build artifacts and Web package for v1.0.0.

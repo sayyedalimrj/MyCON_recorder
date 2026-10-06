@@ -2,17 +2,74 @@
   "name": "MyCON Field Capture Suite",
   "short_name": "MyCON",
   "id": "./",
-  "description": "MyCON QR controls, scientific session QA, 3D/AR viewing and browser fallback capture.",
+  "description": "MyCON 1.0 field capture, QR controls, scientific QA, 3D/AR viewing and fallback capture.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#06101d",
+  "display_override": [
+    "standalone"
+  ],
+  "background_color": "#07111f",
   "theme_color": "#07111f",
   "orientation": "any",
   "categories": [
     "productivity",
     "utilities",
     "photo"
+  ],
+  "shortcuts": [
+    {
+      "name": "Capture",
+      "short_name": "Capture",
+      "description": "Open Web fallback capture",
+      "url": "./#capturePanel",
+      "icons": [
+        {
+          "src": "./icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "QR کنترل",
+      "short_name": "QR",
+      "description": "Open MyCON control marker builder",
+      "url": "./#markerPanel",
+      "icons": [
+        {
+          "src": "./icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "QA برداشت",
+      "short_name": "QA",
+      "description": "Inspect a MyCON capture package",
+      "url": "./#inspectPanel",
+      "icons": [
+        {
+          "src": "./icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "مدل سه‌بعدی",
+      "short_name": "3D",
+      "description": "Open 3D model viewer",
+      "url": "./#modelPanel",
+      "icons": [
+        {
+          "src": "./icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
   ],
   "icons": [
     {

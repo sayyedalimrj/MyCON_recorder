@@ -63,16 +63,16 @@ jobs:
         working-directory: ios
         run: |
           cd build/Build/Products/Debug-iphonesimulator
-          zip -qry ../../../../MyCON-Recorder-iOS-simulator.zip "MyCON Recorder.app"
+          zip -qry ../../../../MyCON-Recorder-iOS-1.0.0-simulator.zip "MyCON Recorder.app"
           cd ../../../../
           cd build-device/Build/Products/Debug-iphoneos
-          zip -qry ../../../../MyCON-Recorder-iOS-device-unsigned.zip "MyCON Recorder.app"
+          zip -qry ../../../../MyCON-Recorder-iOS-1.0.0-device-unsigned.zip "MyCON Recorder.app"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: MyCON-Recorder-iOS-builds
+          name: MyCON-Recorder-iOS-1.0.0-builds
           path: |
-            ios/MyCON-Recorder-iOS-simulator.zip
-            ios/MyCON-Recorder-iOS-device-unsigned.zip
+            ios/MyCON-Recorder-iOS-1.0.0-simulator.zip
+            ios/MyCON-Recorder-iOS-1.0.0-device-unsigned.zip
           if-no-files-found: error
           retention-days: 14
