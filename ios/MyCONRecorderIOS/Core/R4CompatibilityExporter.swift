@@ -170,12 +170,13 @@ enum R4CompatibilityExporter {
             let values = try? url.resourceValues(forKeys: Set(keys))
             guard values?.isRegularFile == true else { continue }
             let relative = url.path.replacingOccurrences(of: sessionDir.path + "/", with: "")
-            let largeMedia = url.pathExtension.lowercased() == "mp4"
+            let ext = url.pathExtension.lowercased()
+            let deferredBinary = ["mp4", "d16", "u8", "f32"].contains(ext)
             rows.append([
                 "path": relative,
                 "size_bytes": values?.fileSize ?? 0,
-                "sha256": largeMedia ? NSNull() : sha256(url),
-                "hash_policy": largeMedia ? "DEFERRED_LARGE_MEDIA" : "SHA256"
+                "sha256": deferredBinary ? NSNull() : sha256(url),
+                "hash_policy": deferredBinary ? "DEFERRED_LARGE_BINARY" : "SHA256"
             ])
         }
         rows.sort { ($0["path"] as? String ?? "") < ($1["path"] as? String ?? "") }
