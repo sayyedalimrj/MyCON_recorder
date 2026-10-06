@@ -1,9 +1,11 @@
-const CACHE="mycon-web-v2";
+const CACHE="mycon-web-v3-ui";
 const CORE=["./","./index.html","./app.css","./app.js","./manifest.webmanifest","./icon.svg"];
 const OPTIONAL=[
   "https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.js",
   "https://cdn.jsdelivr.net/npm/jszip@3.10.2/dist/jszip.min.js",
-  "https://ajax.googleapis.com/ajax/libs/model-viewer/4.3.1/model-viewer.min.js"
+  "https://ajax.googleapis.com/ajax/libs/model-viewer/4.3.1/model-viewer.min.js",
+  "https://cdn.jsdelivr.net/gh/DediData/Yekan-Font@d25d796fd4862d5e9a6426669a603807dfa3805f/Yekan.woff2",
+  "https://cdn.jsdelivr.net/gh/DediData/Yekan-Font@d25d796fd4862d5e9a6426669a603807dfa3805f/Yekan.woff"
 ];
 
 self.addEventListener("install",event=>{

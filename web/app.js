@@ -61,12 +61,12 @@ async function makePayload(d){
 async function renderMarker(){
   const d=markerData();
   if(!d.project||!d.anchor||!d.crs||!Number.isFinite(d.size_mm)||d.size_mm<=0){
-    $("markerStatus").textContent="ورودی ناقص";$("markerStatus").className="badge bad";return;
+    $("markerStatus").textContent="ورودی ناقص";$("markerStatus").className="soft-badge bad";return;
   }
   const out=await makePayload(d);
   $("payload").value=out.payload;
   $("signatureLine").textContent="sig="+out.sig+" • "+out.canonical;
-  $("markerStatus").textContent="معتبر";$("markerStatus").className="badge ok";
+  $("markerStatus").textContent="معتبر";$("markerStatus").className="soft-badge ok";
   const canvas=$("qrCanvas");
   if(window.QRCode?.toCanvas){
     await QRCode.toCanvas(canvas,out.payload,{width:512,margin:4,errorCorrectionLevel:"M",color:{dark:"#000000",light:"#ffffff"}});
@@ -147,7 +147,7 @@ function drawQaHistory(){
     el.innerHTML="<div><strong></strong><span></span></div><span class='badge'></span>";
     el.querySelector("strong").textContent=x.file;
     el.querySelector("span:not(.badge)").textContent=x.platform+" • "+x.frames+" frames • "+x.date;
-    const b=el.querySelector(".badge");b.textContent=x.score+"/100";b.className="badge "+(x.score>=80?"ok":x.score>=55?"warn":"bad");
+    const b=el.querySelector(".badge");b.textContent=x.score+"/100";b.className="soft-badge "+(x.score>=80?"ok":x.score>=55?"warn":"bad");
     host.appendChild(el);
   });
 }
@@ -217,7 +217,7 @@ async function inspectZip(file){
     checks.forEach(c=>compat.append(checkRow(...c)));
     const pass=checks.every(c=>c[1]);
     $("compatBadge").textContent=pass?"READY":"CHECK";
-    $("compatBadge").className="badge "+(pass?"ok":"warn");
+    $("compatBadge").className="soft-badge "+(pass?"ok":"warn");
     msg.textContent=file.name+" • "+(file.size/1024/1024).toFixed(1)+" MB • "+names.length+" entries";
 
     currentQA={
@@ -235,7 +235,7 @@ async function inspectZip(file){
     localStorage.setItem("mycon.qa.history.v1",JSON.stringify(hist.slice(-30)));
     drawQaHistory();
   }catch(err){
-    msg.textContent="خطا: "+err.message;$("compatBadge").textContent="ERROR";$("compatBadge").className="badge bad";
+    msg.textContent="خطا: "+err.message;$("compatBadge").textContent="ERROR";$("compatBadge").className="soft-badge bad";
   }
 }
 $("zipInput").addEventListener("change",e=>{const f=e.target.files?.[0];if(f)inspectZip(f)});
@@ -377,7 +377,7 @@ async function startWebCapture(){
       },()=>{}, {enableHighAccuracy:true,maximumAge:1000,timeout:10000});
     }
     $("startWebCapture").disabled=true;$("stopWebCapture").disabled=false;$("downloadWebCapture").disabled=true;
-    $("webCaptureState").textContent="REC";$("webCaptureState").className="badge bad";
+    $("webCaptureState").textContent="REC";$("webCaptureState").className="live-pill bad";
     webTimer=setInterval(()=>{
       const sec=Math.floor((performance.now()-webStartedAt)/1000);
       $("webCaptureTimer").textContent=String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");
@@ -423,7 +423,7 @@ async function stopWebCapture(){
   }
   webStartedAt=0;mediaRecorder=null;mediaStream=null;
   $("startWebCapture").disabled=false;$("stopWebCapture").disabled=true;
-  $("webCaptureState").textContent="DONE";$("webCaptureState").className="badge ok";
+  $("webCaptureState").textContent="DONE";$("webCaptureState").className="live-pill ok";
   $("webCaptureMessage").textContent="بسته fallback آماده است • "+(videoBlob.size/1024/1024).toFixed(1)+" MB video";
 }
 $("startWebCapture").addEventListener("click",startWebCapture);
@@ -433,7 +433,7 @@ $("downloadWebCapture").addEventListener("click",()=>{if(lastWebPackage)download
 function network(){
   const on=navigator.onLine;
   $("onlineBadge").textContent=on?"آنلاین":"آفلاین";
-  $("onlineBadge").className="badge "+(on?"ok":"warn");
+  $("onlineBadge").className="status-dot "+(on?"ok":"warn");
 }
 addEventListener("online",network);addEventListener("offline",network);
 if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(()=>{}));

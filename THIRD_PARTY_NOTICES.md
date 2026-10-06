@@ -39,3 +39,13 @@ Used by MyCON Web for local glTF/GLB viewing, AR handoff, dimensions and surface
 ARCore, ML Kit, ARKit, RealityKit, RoomPlan, CoreMotion and CoreLocation are platform SDK/services and are subject to their respective platform terms.
 
 This notice is informational and does not change the licenses of the listed projects.
+
+
+## Yekan Font
+
+Used by MyCON Web for Persian interface typography.
+
+- Project: https://github.com/DediData/Yekan-Font
+- License: SIL Open Font License 1.1
+- Original analog letter shapes: Masood Sepehr
+- FontLab implementation credited by the project to Farhad Sakhaei

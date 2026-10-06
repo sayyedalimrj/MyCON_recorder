@@ -36,4 +36,7 @@ jobs:
           PID=$!
           trap "kill $PID" EXIT
           sleep 1
-          curl --fail --silent http://127.0.0.1:8099/ | grep -q "MyCON Web"
+          PAGE="$(curl --fail --silent http://127.0.0.1:8099/)"
+          printf '%s' "$PAGE" | grep -q '<title>MyCON</title>'
+          printf '%s' "$PAGE" | grep -q 'id="homePanel"'
+          printf '%s' "$PAGE" | grep -q 'id="markerPanel"'
