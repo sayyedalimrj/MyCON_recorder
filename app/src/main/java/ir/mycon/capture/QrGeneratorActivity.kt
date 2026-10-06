@@ -24,6 +24,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.common.BitMatrix
 import com.google.zxing.qrcode.QRCodeWriter
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import java.io.File
 import java.io.FileOutputStream
 
@@ -372,7 +373,7 @@ class QrGeneratorActivity : AppCompatActivity() {
         }
 
         fields["azimuth"]?.setText("0.0")
-        fields["size"]?.setText("180")
+        fields["size"]?.setText("160")
         fields["floor"]?.setText("TEST")
 
         if (
@@ -444,7 +445,12 @@ class QrGeneratorActivity : AppCompatActivity() {
     }
 
     private fun makeModules(raw: String): BitMatrix {
-        val hints = mapOf(EncodeHintType.MARGIN to 0)
+        val hints =
+            mapOf(
+                EncodeHintType.MARGIN to 0,
+                EncodeHintType.ERROR_CORRECTION to
+                    ErrorCorrectionLevel.L
+            )
         return QRCodeWriter().encode(
             raw,
             BarcodeFormat.QR_CODE,
