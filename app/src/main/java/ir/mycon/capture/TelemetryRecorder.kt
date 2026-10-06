@@ -558,7 +558,7 @@ class TelemetryRecorder(
                 )
                 .put(
                     "app_version",
-                    "1.0.0"
+                    "1.0.1"
                 )
                 .put(
                     "started_utc",
