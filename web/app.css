@@ -322,6 +322,9 @@ input,select,textarea{-webkit-appearance:none;appearance:none}
   color:#dbe9fb;
   border-color:rgba(255,255,255,.10);
 }
+.soft-badge.ok{color:#b8f3d6;border-color:rgba(84,215,156,.25);background:rgba(84,215,156,.08)}
+.soft-badge.warn{color:#ffe1a4;border-color:rgba(247,198,103,.25);background:rgba(247,198,103,.08)}
+.soft-badge.bad{color:#ffd3da;border-color:rgba(255,117,136,.25);background:rgba(255,117,136,.08)}
 .live-pill.bad{color:#ffd8de;border-color:rgba(255,117,136,.28)}
 .live-pill.ok{color:#b8f3d6;border-color:rgba(84,215,156,.26)}
 
