@@ -80,11 +80,9 @@ class QrGeneratorActivity : AppCompatActivity() {
                 this.hint = hint
                 boxBackgroundMode = TextInputLayout.BOX_BACKGROUND_OUTLINE
                 boxStrokeColor = Ui.BLUE
-                setHintTextColor(android.content.res.ColorStateList.valueOf(Ui.MUTED))
-                boxCornerRadiusTopStart = Ui.dp(this@QrGeneratorActivity, 14).toFloat()
-                boxCornerRadiusTopEnd = Ui.dp(this@QrGeneratorActivity, 14).toFloat()
-                boxCornerRadiusBottomStart = Ui.dp(this@QrGeneratorActivity, 14).toFloat()
-                boxCornerRadiusBottomEnd = Ui.dp(this@QrGeneratorActivity, 14).toFloat()
+                defaultHintTextColor = android.content.res.ColorStateList.valueOf(Ui.MUTED)
+                val r = Ui.dp(this@QrGeneratorActivity, 14).toFloat()
+                setBoxCornerRadii(r, r, r, r)
             }
             val edit = TextInputEditText(layout.context).apply {
                 setText(defaultValue)
