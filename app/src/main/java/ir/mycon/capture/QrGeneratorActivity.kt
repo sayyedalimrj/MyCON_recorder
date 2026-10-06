@@ -9,6 +9,7 @@ import android.graphics.pdf.PdfDocument
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
+import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -50,220 +51,645 @@ class QrGeneratorActivity : AppCompatActivity() {
     }
 
     private fun buildUi() {
-        val scroll = ScrollView(this)
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(Ui.dp(this@QrGeneratorActivity, 18), Ui.dp(this@QrGeneratorActivity, 18), Ui.dp(this@QrGeneratorActivity, 18), Ui.dp(this@QrGeneratorActivity, 18))
-        }
-        scroll.addView(root)
+        val scroll =
+            ScrollView(this)
+
+        val outer =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+                gravity =
+                    Gravity.TOP or
+                        Gravity.CENTER_HORIZONTAL
+                setPadding(
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        16
+                    ),
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        16
+                    ),
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        16
+                    ),
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        24
+                    )
+                )
+            }
+
+        scroll.addView(outer)
         Ui.insetWholeRoot(scroll)
 
-        root.addView(Ui.title(this, "MYCON Control Marker", 25f))
-        root.addView(
-            Ui.label(
-                this,
-                "QR استاندارد برای اتصال Pose محلی ARCore به دستگاه مختصات پروژه. مختصات باید مربوط به مرکز خود سمبل QR باشد.",
-                13f
-            )
-        )
-        Ui.addSpacer(root, 16)
-
-        root.addView(
-            Ui.title(
-                this,
-                "Test kit سریع",
-                17f
-            )
-        )
-        root.addView(
-            Ui.label(
-                this,
-                "سه Marker آماده برای تست مدل و Scale؛ A001 مدل دارد، A002/A003 کنترل مقیاس‌اند.",
-                12f
-            )
-        )
-        Ui.addSpacer(root, 8)
-
-        val testRow =
+        val root =
             LinearLayout(this).apply {
                 orientation =
                     LinearLayout.VERTICAL
             }
 
-        fun addTestPresetButton(
-            title: String,
-            anchor: String
-        ) {
-            val button =
+        val maxWidth =
+            if (
+                resources.configuration
+                    .screenWidthDp >=
+                600
+            ) {
+                Ui.dp(
+                    this,
+                    600
+                )
+            } else {
+                LinearLayout
+                    .LayoutParams
+                    .MATCH_PARENT
+            }
+
+        outer.addView(
+            root,
+            LinearLayout.LayoutParams(
+                maxWidth,
+                LinearLayout.LayoutParams
+                    .WRAP_CONTENT
+            )
+        )
+
+        root.addView(
+            Ui.title(
+                this,
+                "Control Marker",
+                23f
+            )
+        )
+        root.addView(
+            Ui.label(
+                this,
+                "مرکز QR = مختصات Survey. چاپ همیشه Actual Size.",
+                12f
+            )
+        )
+        Ui.addSpacer(
+            root,
+            14
+        )
+
+        val presetCard =
+            Ui.card(this)
+        val presetBox =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+                setPadding(
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        12
+                    ),
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        10
+                    ),
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        12
+                    ),
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        10
+                    )
+                )
+            }
+        presetBox.addView(
+            Ui.title(
+                this,
+                "TEST01",
+                15f
+            )
+        )
+        presetBox.addView(
+            Ui.label(
+                this,
+                "A001 مدل 1m • A002/A003 کنترل Scale",
+                10.5f
+            )
+        )
+        Ui.addSpacer(
+            presetBox,
+            7
+        )
+
+        val presets =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.HORIZONTAL
+            }
+
+        listOf(
+            "A001",
+            "A002",
+            "A003"
+        ).forEachIndexed {
+                index,
+                anchor ->
+            presets.addView(
                 Ui.button(
                     this,
-                    title,
-                    if (anchor == "A001") {
+                    anchor,
+                    if (
+                        anchor ==
+                        "A001"
+                    ) {
                         Ui.PURPLE
                     } else {
                         Ui.SURFACE_2
                     }
                 ).apply {
+                    textSize = 12f
                     setOnClickListener {
-                        loadTestPreset(anchor)
+                        loadTestPreset(
+                            anchor
+                        )
                     }
-                }
-            testRow.addView(
-                button,
+                },
                 LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    Ui.dp(this, 50)
+                    0,
+                    Ui.dp(
+                        this,
+                        42
+                    ),
+                    1f
                 ).apply {
-                    bottomMargin =
-                        Ui.dp(this@QrGeneratorActivity, 6)
+                    if (
+                        index < 2
+                    ) {
+                        marginEnd =
+                            Ui.dp(
+                                this@QrGeneratorActivity,
+                                5
+                            )
+                    }
                 }
             )
         }
 
-        addTestPresetButton(
-            "A001 • مدل Test Cube 1m • (0,0,0)",
-            "A001"
-        )
-        addTestPresetButton(
-            "A002 • Scale Control • (0.5,0,0)",
-            "A002"
-        )
-        addTestPresetButton(
-            "A003 • Scale Control • (0,0.5,0)",
-            "A003"
+        presetBox.addView(presets)
+        presetCard.addView(presetBox)
+        root.addView(presetCard)
+
+        Ui.addSpacer(
+            root,
+            10
         )
 
-        root.addView(testRow)
-
-        Ui.addSpacer(root, 12)
-
-        val formCard = Ui.card(this)
-        val form = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(Ui.dp(this@QrGeneratorActivity, 14), Ui.dp(this@QrGeneratorActivity, 14), Ui.dp(this@QrGeneratorActivity, 14), Ui.dp(this@QrGeneratorActivity, 14))
-        }
-
-        fun addField(
+        fun makeField(
             key: String,
             hint: String,
             defaultValue: String,
             numeric: Boolean = false
-        ) {
-            val layout = TextInputLayout(this).apply {
-                this.hint = hint
-                boxBackgroundMode = TextInputLayout.BOX_BACKGROUND_OUTLINE
-                boxStrokeColor = Ui.BLUE
-                defaultHintTextColor = android.content.res.ColorStateList.valueOf(Ui.MUTED)
-                val r = Ui.dp(this@QrGeneratorActivity, 14).toFloat()
-                setBoxCornerRadii(r, r, r, r)
-            }
-            val edit = TextInputEditText(layout.context).apply {
-                setText(defaultValue)
-                setTextColor(Ui.TEXT)
-                setHintTextColor(Ui.MUTED)
-                setSingleLine(true)
-                if (numeric) {
-                    inputType =
-                        InputType.TYPE_CLASS_NUMBER or
-                            InputType.TYPE_NUMBER_FLAG_DECIMAL or
-                            InputType.TYPE_NUMBER_FLAG_SIGNED
+        ): TextInputLayout {
+            val layout =
+                TextInputLayout(this).apply {
+                    this.hint = hint
+                    boxBackgroundMode =
+                        TextInputLayout
+                            .BOX_BACKGROUND_OUTLINE
+                    boxStrokeColor =
+                        Ui.BLUE
+                    defaultHintTextColor =
+                        android.content.res
+                            .ColorStateList
+                            .valueOf(
+                                Ui.MUTED
+                            )
+                    val radius =
+                        Ui.dp(
+                            this@QrGeneratorActivity,
+                            12
+                        ).toFloat()
+                    setBoxCornerRadii(
+                        radius,
+                        radius,
+                        radius,
+                        radius
+                    )
                 }
-            }
+
+            val edit =
+                TextInputEditText(
+                    layout.context
+                ).apply {
+                    setText(
+                        defaultValue
+                    )
+                    setTextColor(
+                        Ui.TEXT
+                    )
+                    setHintTextColor(
+                        Ui.MUTED
+                    )
+                    setSingleLine(true)
+                    textSize = 14f
+                    if (numeric) {
+                        inputType =
+                            InputType
+                                .TYPE_CLASS_NUMBER or
+                                InputType
+                                    .TYPE_NUMBER_FLAG_DECIMAL or
+                                InputType
+                                    .TYPE_NUMBER_FLAG_SIGNED
+                    }
+                }
+
             fields[key] = edit
             layout.addView(edit)
-            form.addView(
-                layout,
+            return layout
+        }
+
+        val essentialCard =
+            Ui.card(this)
+        val essential =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+                setPadding(
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        12
+                    ),
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        12
+                    ),
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        12
+                    ),
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        12
+                    )
+                )
+            }
+
+        essential.addView(
+            Ui.title(
+                this,
+                "مشخصات Control",
+                15f
+            )
+        )
+        Ui.addSpacer(
+            essential,
+            8
+        )
+
+        val idRow =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.HORIZONTAL
+            }
+        idRow.addView(
+            makeField(
+                "project",
+                "Project",
+                settings.lastProject
+                    .ifBlank {
+                        "P001"
+                    }
+            ),
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams
+                    .WRAP_CONTENT,
+                1f
+            ).apply {
+                marginEnd =
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        6
+                    )
+            }
+        )
+        idRow.addView(
+            makeField(
+                "anchor",
+                "Anchor",
+                "A001"
+            ),
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams
+                    .WRAP_CONTENT,
+                1f
+            )
+        )
+        essential.addView(idRow)
+
+        Ui.addSpacer(
+            essential,
+            8
+        )
+
+        val xyzRow =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.HORIZONTAL
+            }
+
+        listOf(
+            Triple(
+                "x",
+                "X (m)",
+                "0.000"
+            ),
+            Triple(
+                "y",
+                "Y (m)",
+                "0.000"
+            ),
+            Triple(
+                "z",
+                "Z (m)",
+                "0.000"
+            )
+        ).forEachIndexed {
+                index,
+                item ->
+            xyzRow.addView(
+                makeField(
+                    item.first,
+                    item.second,
+                    item.third,
+                    true
+                ),
                 LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
+                    0,
+                    LinearLayout.LayoutParams
+                        .WRAP_CONTENT,
+                    1f
                 ).apply {
-                    bottomMargin = Ui.dp(this@QrGeneratorActivity, 10)
+                    if (
+                        index < 2
+                    ) {
+                        marginEnd =
+                            Ui.dp(
+                                this@QrGeneratorActivity,
+                                5
+                            )
+                    }
                 }
             )
         }
+        essential.addView(xyzRow)
 
-        addField("project", "Project ID", settings.lastProject.ifBlank { "P001" })
-        addField("anchor", "Anchor ID", "A001")
-        addField("crs", "CRS — مثال EPSG:32639 یا LOCAL:P001", "LOCAL:P001")
-        addField("x", "X مرکز QR — متر", "0.000", true)
-        addField("y", "Y مرکز QR — متر", "0.000", true)
-        addField("z", "Z مرکز QR — متر", "0.000", true)
-        addField("azimuth", "Azimuth — درجه", "0.0", true)
-        addField("size", "اندازه خود سمبل QR — میلی‌متر", "180", true)
-        addField("floor", "طبقه / Zone", "GF")
+        Ui.addSpacer(
+            essential,
+            8
+        )
 
-        form.addView(Ui.label(this, "نوع نصب", 13f))
-        Ui.addSpacer(form, 6)
-
-        val mountGroup = MaterialButtonToggleGroup(this).apply {
-            isSingleSelection = true
-            isSelectionRequired = true
-        }
-        val vertical = Ui.button(this, "عمودی", Ui.BLUE).apply {
-            id = android.view.View.generateViewId()
-        }
-        val horizontal = Ui.button(this, "افقی", Ui.SURFACE_2).apply {
-            id = android.view.View.generateViewId()
-        }
-        mountGroup.addView(vertical, LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1f))
-        mountGroup.addView(horizontal, LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1f))
-        mountGroup.check(vertical.id)
-        mountGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (!isChecked) return@addOnButtonCheckedListener
-            val horizontalSelected = checkedId == horizontal.id
-            mountMode = if (horizontalSelected) "HORIZONTAL" else "VERTICAL"
-            vertical.backgroundTintList = android.content.res.ColorStateList.valueOf(
-                if (horizontalSelected) Ui.SURFACE_2 else Ui.BLUE
-            )
-            horizontal.backgroundTintList = android.content.res.ColorStateList.valueOf(
-                if (horizontalSelected) Ui.BLUE else Ui.SURFACE_2
-            )
-        }
-        form.addView(mountGroup)
-
-        Ui.addSpacer(form, 12)
-        form.addView(
-            Ui.label(
-                this,
-                "مدل سه‌بعدی متصل به QR",
-                13f
+        essential.addView(
+            makeField(
+                "size",
+                "QR symbol size (mm)",
+                "160",
+                true
             )
         )
-        Ui.addSpacer(form, 6)
+
+        essentialCard.addView(
+            essential
+        )
+        root.addView(
+            essentialCard
+        )
+
+        Ui.addSpacer(
+            root,
+            8
+        )
+
+        val advanced =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+                visibility =
+                    View.GONE
+            }
+
+        val advancedCard =
+            Ui.card(this)
+        val advancedBox =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+                setPadding(
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        12
+                    ),
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        12
+                    ),
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        12
+                    ),
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        12
+                    )
+                )
+            }
+
+        advancedBox.addView(
+            makeField(
+                "crs",
+                "CRS",
+                "LOCAL:P001"
+            )
+        )
+        Ui.addSpacer(
+            advancedBox,
+            7
+        )
+
+        val azFloorRow =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.HORIZONTAL
+            }
+        azFloorRow.addView(
+            makeField(
+                "azimuth",
+                "Azimuth °",
+                "0.0",
+                true
+            ),
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams
+                    .WRAP_CONTENT,
+                1f
+            ).apply {
+                marginEnd =
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        6
+                    )
+            }
+        )
+        azFloorRow.addView(
+            makeField(
+                "floor",
+                "Floor / Zone",
+                "GF"
+            ),
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams
+                    .WRAP_CONTENT,
+                1f
+            )
+        )
+        advancedBox.addView(
+            azFloorRow
+        )
+
+        Ui.addSpacer(
+            advancedBox,
+            10
+        )
+        advancedBox.addView(
+            Ui.label(
+                this,
+                "Mount",
+                11f
+            )
+        )
+
+        val mountGroup =
+            MaterialButtonToggleGroup(this).apply {
+                isSingleSelection = true
+                isSelectionRequired = true
+            }
+        val vertical =
+            Ui.button(
+                this,
+                "Vertical",
+                Ui.BLUE
+            ).apply {
+                id =
+                    View.generateViewId()
+                textSize = 12f
+            }
+        val horizontal =
+            Ui.button(
+                this,
+                "Horizontal",
+                Ui.SURFACE_2
+            ).apply {
+                id =
+                    View.generateViewId()
+                textSize = 12f
+            }
+        mountGroup.addView(
+            vertical,
+            LinearLayout.LayoutParams(
+                0,
+                Ui.dp(
+                    this,
+                    42
+                ),
+                1f
+            )
+        )
+        mountGroup.addView(
+            horizontal,
+            LinearLayout.LayoutParams(
+                0,
+                Ui.dp(
+                    this,
+                    42
+                ),
+                1f
+            )
+        )
+        mountGroup.check(
+            vertical.id
+        )
+        mountGroup
+            .addOnButtonCheckedListener {
+                    _,
+                    checkedId,
+                    checked ->
+                if (!checked) {
+                    return@addOnButtonCheckedListener
+                }
+                val isHorizontal =
+                    checkedId ==
+                        horizontal.id
+                mountMode =
+                    if (isHorizontal) {
+                        "HORIZONTAL"
+                    } else {
+                        "VERTICAL"
+                    }
+            }
+        advancedBox.addView(
+            mountGroup
+        )
+
+        Ui.addSpacer(
+            advancedBox,
+            10
+        )
+        advancedBox.addView(
+            Ui.label(
+                this,
+                "Attached model",
+                11f
+            )
+        )
 
         modelGroup =
             MaterialButtonToggleGroup(this).apply {
                 isSingleSelection = true
                 isSelectionRequired = true
             }
+
         val noModel =
             Ui.button(
                 this,
-                "بدون مدل",
+                "None",
                 Ui.SURFACE_2
             ).apply {
                 id =
-                    android.view.View
-                        .generateViewId()
+                    View.generateViewId()
+                textSize = 12f
             }
         val testCube =
             Ui.button(
                 this,
-                "Test Cube 1m",
+                "Cube 1m",
                 Ui.BLUE
             ).apply {
                 id =
-                    android.view.View
-                        .generateViewId()
+                    View.generateViewId()
+                textSize = 12f
             }
 
-        testCubeButtonId = testCube.id
+        testCubeButtonId =
+            testCube.id
 
         modelGroup.addView(
             noModel,
             LinearLayout.LayoutParams(
                 0,
-                Ui.dp(this, 48),
+                Ui.dp(
+                    this,
+                    42
+                ),
                 1f
             )
         )
@@ -271,80 +697,259 @@ class QrGeneratorActivity : AppCompatActivity() {
             testCube,
             LinearLayout.LayoutParams(
                 0,
-                Ui.dp(this, 48),
+                Ui.dp(
+                    this,
+                    42
+                ),
                 1f
             )
         )
-        modelGroup.check(noModel.id)
-
-        modelGroup.addOnButtonCheckedListener {
-                _,
-                checkedId,
-                isChecked ->
-            if (!isChecked) {
-                return@addOnButtonCheckedListener
-            }
-            modelId =
-                if (checkedId == testCube.id) {
-                    AnchorPayload.TEST_MODEL_ID
-                } else {
-                    ""
+        modelGroup.check(
+            noModel.id
+        )
+        modelGroup
+            .addOnButtonCheckedListener {
+                    _,
+                    checkedId,
+                    checked ->
+                if (!checked) {
+                    return@addOnButtonCheckedListener
                 }
-        }
-        form.addView(modelGroup)
+                modelId =
+                    if (
+                        checkedId ==
+                        testCube.id
+                    ) {
+                        AnchorPayload
+                            .TEST_MODEL_ID
+                    } else {
+                        ""
+                    }
+            }
+        advancedBox.addView(
+            modelGroup
+        )
 
-        formCard.addView(form)
-        root.addView(formCard)
+        advancedCard.addView(
+            advancedBox
+        )
+        advanced.addView(
+            advancedCard
+        )
+        root.addView(advanced)
 
-        Ui.addSpacer(root, 14)
+        val advancedToggle =
+            Ui.button(
+                this,
+                "جزئیات Marker",
+                Ui.SURFACE_2
+            ).apply {
+                setOnClickListener {
+                    val show =
+                        advanced.visibility !=
+                            View.VISIBLE
+                    advanced.visibility =
+                        if (show) {
+                            View.VISIBLE
+                        } else {
+                            View.GONE
+                        }
+                    text =
+                        if (show) {
+                            "بستن جزئیات"
+                        } else {
+                            "جزئیات Marker"
+                        }
+                }
+            }
+        root.addView(
+            advancedToggle,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams
+                    .MATCH_PARENT,
+                Ui.dp(
+                    this,
+                    42
+                )
+            )
+        )
 
-        val generate = Ui.primaryButton(this, "ساخت Marker").apply {
-            setOnClickListener { generate() }
-        }
-        root.addView(generate, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(this, 60)))
+        Ui.addSpacer(
+            root,
+            10
+        )
 
-        Ui.addSpacer(root, 14)
+        val actions =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.HORIZONTAL
+            }
 
-        val previewCard = Ui.card(this)
-        val previewBox = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(Ui.dp(this@QrGeneratorActivity, 14), Ui.dp(this@QrGeneratorActivity, 14), Ui.dp(this@QrGeneratorActivity, 14), Ui.dp(this@QrGeneratorActivity, 14))
-        }
-        preview = ImageView(this).apply {
-            adjustViewBounds = true
-            minimumHeight = Ui.dp(this@QrGeneratorActivity, 260)
-            setBackgroundColor(Color.WHITE)
-            setPadding(Ui.dp(this@QrGeneratorActivity, 10), Ui.dp(this@QrGeneratorActivity, 10), Ui.dp(this@QrGeneratorActivity, 10), Ui.dp(this@QrGeneratorActivity, 10))
-        }
-        payloadView = Ui.label(this, "Marker هنوز ساخته نشده.", 11f).apply {
-            setTextIsSelectable(true)
-        }
-        previewBox.addView(preview, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
-        Ui.addSpacer(previewBox, 10)
-        previewBox.addView(payloadView)
-        previewCard.addView(previewBox)
-        root.addView(previewCard)
+        val generate =
+            Ui.primaryButton(
+                this,
+                "ساخت Marker"
+            )
+                .apply {
+                    textSize = 14f
+                    setOnClickListener {
+                        generate()
+                    }
+                }
 
-        Ui.addSpacer(root, 12)
+        val pdf =
+            Ui.button(
+                this,
+                "PDF / Share",
+                Ui.SURFACE_2
+            ).apply {
+                setOnClickListener {
+                    createPdfAndShare()
+                }
+            }
 
-        val warning = Ui.card(this)
-        val warningText = Ui.label(
-            this,
-            "چاپ باید روی 100% / Actual Size باشد. size_mm فقط ضلع خود سمبل QR است؛ Quiet Zone سفید چهارماژولی بیرون آن قرار می‌گیرد. بعد از چاپ حتماً خط کنترل 100 mm را با خط‌کش اندازه بگیر.",
-            13f
-        ).apply {
-            setPadding(Ui.dp(this@QrGeneratorActivity, 16), Ui.dp(this@QrGeneratorActivity, 14), Ui.dp(this@QrGeneratorActivity, 16), Ui.dp(this@QrGeneratorActivity, 14))
-        }
-        warning.addView(warningText)
-        root.addView(warning)
+        actions.addView(
+            generate,
+            LinearLayout.LayoutParams(
+                0,
+                Ui.dp(
+                    this,
+                    50
+                ),
+                1.3f
+            ).apply {
+                marginEnd =
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        6
+                    )
+            }
+        )
+        actions.addView(
+            pdf,
+            LinearLayout.LayoutParams(
+                0,
+                Ui.dp(
+                    this,
+                    50
+                ),
+                1f
+            )
+        )
+        root.addView(actions)
 
-        Ui.addSpacer(root, 12)
+        Ui.addSpacer(
+            root,
+            10
+        )
 
-        val pdf = Ui.button(this, "PDF چاپ دقیق / Share", Ui.GREEN).apply {
-            setOnClickListener { createPdfAndShare() }
-        }
-        root.addView(pdf, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(this, 54)))
+        val previewCard =
+            Ui.card(this)
+        val previewBox =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+                gravity =
+                    Gravity.CENTER
+                setPadding(
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        12
+                    ),
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        12
+                    ),
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        12
+                    ),
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        12
+                    )
+                )
+            }
+
+        preview =
+            ImageView(this).apply {
+                adjustViewBounds = true
+                minimumHeight =
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        220
+                    )
+                setBackgroundColor(
+                    Color.WHITE
+                )
+                setPadding(
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        8
+                    ),
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        8
+                    ),
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        8
+                    ),
+                    Ui.dp(
+                        this@QrGeneratorActivity,
+                        8
+                    )
+                )
+            }
+
+        payloadView =
+            Ui.label(
+                this,
+                "Marker هنوز ساخته نشده.",
+                10.5f
+            ).apply {
+                setTextIsSelectable(true)
+                maxLines = 5
+                ellipsize =
+                    android.text.TextUtils
+                        .TruncateAt.END
+            }
+
+        previewBox.addView(
+            preview,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams
+                    .MATCH_PARENT,
+                LinearLayout.LayoutParams
+                    .WRAP_CONTENT
+            )
+        )
+        Ui.addSpacer(
+            previewBox,
+            7
+        )
+        previewBox.addView(
+            payloadView
+        )
+        previewCard.addView(
+            previewBox
+        )
+        root.addView(
+            previewCard
+        )
+
+        Ui.addSpacer(
+            root,
+            8
+        )
+
+        root.addView(
+            Ui.label(
+                this,
+                "چاپ: 100% / Actual Size • خط 100 mm را بعد از چاپ اندازه بگیر.",
+                11f
+            )
+        )
 
         setContentView(scroll)
     }

@@ -282,7 +282,8 @@ class TelemetryRecorder(
         corners: List<Pair<Int, Int>>,
         cameraPose: FloatArray,
         intrinsics: FloatArray,
-        imageDims: IntArray
+        imageDims: IntArray,
+        markerEstimate: QrPoseEstimate? = null
     ): JSONObject {
         val parsed =
             AnchorPayload.parse(raw)
@@ -329,6 +330,41 @@ class TelemetryRecorder(
                         imageDims.toList()
                     )
                 )
+
+        if (markerEstimate != null) {
+            val p =
+                markerEstimate.worldPose
+            val t =
+                p.translation
+            val q =
+                p.rotationQuaternion
+
+            json
+                .put(
+                    "marker_pose_arcore_tx_ty_tz_qx_qy_qz_qw",
+                    JSONArray(
+                        listOf(
+                            t[0],
+                            t[1],
+                            t[2],
+                            q[0],
+                            q[1],
+                            q[2],
+                            q[3]
+                        )
+                    )
+                )
+                .put(
+                    "marker_reprojection_error_px",
+                    markerEstimate
+                        .reprojectionErrorPx
+                )
+                .put(
+                    "marker_distance_m",
+                    markerEstimate
+                        .distanceM
+                )
+        }
 
         if (parsed != null) {
             projects += parsed.project
@@ -522,7 +558,7 @@ class TelemetryRecorder(
                 )
                 .put(
                     "app_version",
-                    "0.6.0"
+                    "0.7.0"
                 )
                 .put(
                     "started_utc",
@@ -576,6 +612,14 @@ class TelemetryRecorder(
                 .put(
                     "frame_count",
                     frames
+                )
+                .put(
+                    "first_frame_timestamp_ns",
+                    firstFrameTimestampNs
+                )
+                .put(
+                    "last_frame_timestamp_ns",
+                    lastFrameTimestampNs
                 )
                 .put(
                     "tracking_frame_count",

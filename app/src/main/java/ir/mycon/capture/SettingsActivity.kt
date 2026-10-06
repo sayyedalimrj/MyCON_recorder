@@ -652,7 +652,7 @@ class SettingsActivity : AppCompatActivity() {
         root.addView(
             Ui.label(
                 this,
-                "v0.6 • COLMAP-ready capture",
+                "v0.7 • MyCON R4 Bridge",
                 11f
             )
         )

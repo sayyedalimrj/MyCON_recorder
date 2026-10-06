@@ -10,6 +10,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -124,6 +125,87 @@ object Ui {
             minHeight = dp(context, 60)
             cornerRadius = dp(context, 30)
             setTypeface(typeface, Typeface.BOLD)
+        }
+
+    fun iconButton(
+        context: Context,
+        iconRes: Int,
+        description: String,
+        color: Int = SURFACE_2
+    ): MaterialButton =
+        MaterialButton(context).apply {
+            text = ""
+            contentDescription = description
+            icon =
+                ContextCompat.getDrawable(
+                    context,
+                    iconRes
+                )
+            iconTint =
+                ColorStateList.valueOf(
+                    TEXT
+                )
+            iconPadding = 0
+            iconGravity =
+                MaterialButton.ICON_GRAVITY_TEXT_START
+            minWidth = dp(context, 48)
+            minHeight = dp(context, 48)
+            cornerRadius = dp(context, 24)
+            insetTop = 0
+            insetBottom = 0
+            setPadding(0, 0, 0, 0)
+            backgroundTintList =
+                ColorStateList.valueOf(
+                    color
+                )
+        }
+
+    fun captureButton(
+        context: Context,
+        recording: Boolean = false
+    ): MaterialButton =
+        MaterialButton(context).apply {
+            text = ""
+            contentDescription =
+                if (recording) {
+                    "Stop recording"
+                } else {
+                    "Start recording"
+                }
+            icon =
+                ContextCompat.getDrawable(
+                    context,
+                    if (recording) {
+                        R.drawable.ic_stop_capture
+                    } else {
+                        R.drawable.ic_record_capture
+                    }
+                )
+            iconTint =
+                ColorStateList.valueOf(
+                    Color.WHITE
+                )
+            iconPadding = 0
+            iconGravity =
+                MaterialButton.ICON_GRAVITY_TEXT_START
+            minWidth = dp(context, 68)
+            minHeight = dp(context, 68)
+            cornerRadius = dp(context, 34)
+            insetTop = 0
+            insetBottom = 0
+            setPadding(0, 0, 0, 0)
+            backgroundTintList =
+                ColorStateList.valueOf(
+                    RED
+                )
+            strokeWidth = dp(context, 3)
+            strokeColor =
+                ColorStateList.valueOf(
+                    ColorUtils.setAlphaComponent(
+                        Color.WHITE,
+                        210
+                    )
+                )
         }
 
     fun addSpacer(parent: LinearLayout, heightDp: Int) {

@@ -44,6 +44,11 @@ jobs:
       - name: Check QR pose math contract
         run: python tools/qr_pose_math_check.py
 
+      - name: Check MyCON R4 bridge contract
+        run: |
+          python -m pip install --disable-pip-version-check -q numpy
+          python tools/mycon_r4_bridge.py --self-test
+
       - name: Restore stable debug signing key
         uses: actions/cache@v4
         with:

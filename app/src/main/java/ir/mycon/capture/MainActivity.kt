@@ -161,6 +161,29 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
     private fun buildUi() {
         val root = FrameLayout(this)
+        val widthDp =
+            resources.configuration
+                .screenWidthDp
+        val expanded =
+            widthDp >= 600
+        val topPanelWidth =
+            if (expanded) {
+                Ui.dp(
+                    this,
+                    560
+                )
+            } else {
+                FrameLayout.LayoutParams.MATCH_PARENT
+            }
+        val capturePanelWidth =
+            if (expanded) {
+                Ui.dp(
+                    this,
+                    430
+                )
+            } else {
+                FrameLayout.LayoutParams.MATCH_PARENT
+            }
 
         glView =
             GLSurfaceView(this).apply {
@@ -372,9 +395,9 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         root.addView(
             topCard,
             FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
+                topPanelWidth,
                 FrameLayout.LayoutParams.WRAP_CONTENT,
-                Gravity.TOP
+                Gravity.TOP or Gravity.CENTER_HORIZONTAL
             ).apply {
                 leftMargin =
                     Ui.dp(
@@ -489,77 +512,43 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 this,
                 alphaSurface = true
             )
-        val dock =
-            LinearLayout(this).apply {
-                orientation =
-                    LinearLayout.VERTICAL
-                setPadding(
-                    Ui.dp(
-                        this@MainActivity,
-                        8
-                    ),
-                    Ui.dp(
-                        this@MainActivity,
-                        8
-                    ),
-                    Ui.dp(
-                        this@MainActivity,
-                        8
-                    ),
-                    Ui.dp(
-                        this@MainActivity,
-                        8
-                    )
-                )
-            }
 
-        recordButton =
-            Ui.primaryButton(
-                this,
-                "● شروع برداشت"
-            ).apply {
-                minHeight =
-                    Ui.dp(
-                        this@MainActivity,
-                        52
-                    )
-                setOnClickListener {
-                    toggleRecording()
-                }
-            }
-
-        dock.addView(
-            recordButton,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                Ui.dp(
-                    this,
-                    52
-                )
-            )
-        )
-
-        Ui.addSpacer(
-            dock,
-            6
-        )
-
-        val actions =
+        val captureRow =
             LinearLayout(this).apply {
                 orientation =
                     LinearLayout.HORIZONTAL
+                gravity =
+                    Gravity.CENTER
+                setPadding(
+                    Ui.dp(
+                        this@MainActivity,
+                        10
+                    ),
+                    Ui.dp(
+                        this@MainActivity,
+                        8
+                    ),
+                    Ui.dp(
+                        this@MainActivity,
+                        10
+                    ),
+                    Ui.dp(
+                        this@MainActivity,
+                        8
+                    )
+                )
             }
 
         val qrButton =
-            Ui.button(
+            Ui.iconButton(
                 this,
-                "QR",
-                Ui.SURFACE_2
+                R.drawable.ic_qr_action,
+                "QR پروژه"
             ).apply {
                 setOnClickListener {
                     if (recording) {
                         toast(
-                            "برای بازکردن QR اول ضبط را متوقف کن."
+                            "برای ساخت QR اول ضبط را متوقف کن."
                         )
                     } else {
                         startActivity(
@@ -573,10 +562,10 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             }
 
         modelButton =
-            Ui.button(
+            Ui.iconButton(
                 this,
-                "3D",
-                Ui.SURFACE_2
+                R.drawable.ic_cube_action,
+                "مدل سه‌بعدی"
             ).apply {
                 isEnabled = false
                 alpha = 0.45f
@@ -585,26 +574,66 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 }
             }
 
-        val toolsButton =
-            Ui.button(
+        recordButton =
+            Ui.captureButton(
                 this,
-                "ابزار",
-                Ui.SURFACE_2
+                false
+            ).apply {
+                setOnClickListener {
+                    toggleRecording()
+                }
+            }
+
+        val sessionsButton =
+            Ui.iconButton(
+                this,
+                R.drawable.ic_history_action,
+                "برداشت‌ها"
+            ).apply {
+                setOnClickListener {
+                    if (recording) {
+                        toast(
+                            "برای دیدن برداشت‌ها اول ضبط را متوقف کن."
+                        )
+                    } else {
+                        startActivity(
+                            Intent(
+                                this@MainActivity,
+                                SessionManagerActivity::class.java
+                            )
+                        )
+                    }
+                }
+            }
+
+        val toolsButton =
+            Ui.iconButton(
+                this,
+                R.drawable.ic_more_action,
+                "ابزارهای بیشتر"
             ).apply {
                 setOnClickListener {
                     showToolsDialog()
                 }
             }
 
-        val actionLp =
+        fun smallControlLp():
+            LinearLayout.LayoutParams =
             LinearLayout.LayoutParams(
-                0,
                 Ui.dp(
                     this,
-                    44
+                    48
                 ),
-                1f
+                Ui.dp(
+                    this,
+                    48
+                )
             ).apply {
+                marginStart =
+                    Ui.dp(
+                        this@MainActivity,
+                        5
+                    )
                 marginEnd =
                     Ui.dp(
                         this@MainActivity,
@@ -612,28 +641,49 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                     )
             }
 
-        actions.addView(
+        captureRow.addView(
             qrButton,
-            actionLp
+            smallControlLp()
         )
-        actions.addView(
+        captureRow.addView(
             modelButton,
-            actionLp
+            smallControlLp()
         )
-        actions.addView(
-            toolsButton,
+        captureRow.addView(
+            recordButton,
             LinearLayout.LayoutParams(
-                0,
                 Ui.dp(
                     this,
-                    44
+                    68
                 ),
-                1f
-            )
+                Ui.dp(
+                    this,
+                    68
+                )
+            ).apply {
+                marginStart =
+                    Ui.dp(
+                        this@MainActivity,
+                        10
+                    )
+                marginEnd =
+                    Ui.dp(
+                        this@MainActivity,
+                        10
+                    )
+            }
         )
-        dock.addView(actions)
+        captureRow.addView(
+            sessionsButton,
+            smallControlLp()
+        )
+        captureRow.addView(
+            toolsButton,
+            smallControlLp()
+        )
 
-        // Export is intentionally moved into the Tools sheet.
+        // Kept as an off-screen state holder because export readiness is used
+        // by the professional tools sheet.
         exportButton =
             Ui.button(
                 this,
@@ -641,14 +691,16 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 Ui.SURFACE_2
             )
 
-        bottomDock.addView(dock)
+        bottomDock.addView(
+            captureRow
+        )
 
         root.addView(
             bottomDock,
             FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
+                capturePanelWidth,
                 FrameLayout.LayoutParams.WRAP_CONTENT,
-                Gravity.BOTTOM
+                Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
             ).apply {
                 leftMargin =
                     Ui.dp(
@@ -1001,11 +1053,11 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                             true
                         modelButton.alpha =
                             1f
-                        modelButton.text =
+                        modelButton.contentDescription =
                             if (modelVisible) {
-                                "3D روشن"
+                                "مدل سه‌بعدی روشن"
                             } else {
-                                "3D"
+                                "مدل سه‌بعدی"
                             }
                     }
                 }
@@ -1547,15 +1599,15 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                         } else {
                             0.55f
                         }
-                    modelButton.text =
+                    modelButton.contentDescription =
                         if (lock.locked) {
                             if (modelVisible) {
-                                "3D روشن"
+                                "مدل سه‌بعدی روشن"
                             } else {
-                                "3D"
+                                "مدل سه‌بعدی آماده"
                             }
                         } else {
-                            "تثبیت ${lock.samples}/8"
+                            "در حال تثبیت مدل ${lock.samples} از 8"
                         }
                 }
             }
@@ -1582,7 +1634,8 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                     corners = detection.corners,
                     cameraPose = detection.cameraPose7,
                     intrinsics = detection.intrinsics4,
-                    imageDims = detection.imageDims
+                    imageDims = detection.imageDims,
+                    markerEstimate = estimate
                 )
 
             if (event != null) {
@@ -1647,51 +1700,23 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             return
         }
 
-        val fov =
-            selected.horizontalFovDeg
-                ?.let {
-                    String.format(
-                        Locale.US,
-                        "%.1f°",
-                        it
-                    )
-                } ?: "نامشخص"
-
-        val focal =
-            selected.focalLengthMm
-                ?.let {
-                    String.format(
-                        Locale.US,
-                        "%.2f mm",
-                        it
-                    )
-                } ?: "نامشخص"
-
-        val message =
-            "Profile: ${selected.appliedProfile}\n" +
-                "Camera ID: ${selected.cameraId}\n" +
-                "CPU/Recorded stream: ${selected.imageWidth}×${selected.imageHeight}\n" +
-                "GPU preview: ${selected.textureWidth}×${selected.textureHeight}\n" +
-                "FPS range: ${selected.fpsMin}–${selected.fpsMax}\n" +
-                "Focal: $focal\n" +
-                "Horizontal FOV: $fov\n" +
-                "Logical multi-camera: ${if (selected.logicalMultiCamera) "yes" else "no"}\n" +
-                "Depth usage: ${selected.depthUsage}\n" +
-                "Stereo: ${selected.stereoUsage}\n\n" +
-                selected.note
-
-        AlertDialog.Builder(this)
-            .setTitle(
-                "Scientific camera"
-            )
-            .setMessage(message)
-            .setNegativeButton(
-                "بستن",
-                null
-            )
-            .setPositiveButton(
-                "تنظیم کیفیت"
-            ) { _, _ ->
+        CaptureSheets.showCameraInfo(
+            context = this,
+            selection = selected,
+            exposureMs =
+                latestExposureMs,
+            blurPx =
+                latestRotationalBlurPx,
+            focusMode =
+                settings.focusMode,
+            torchEnabled =
+                settings.torchEnabled
+        ) {
+            if (recording) {
+                toast(
+                    "تنظیمات دوربین بعد از پایان ضبط قابل تغییر است."
+                )
+            } else {
                 startActivity(
                     Intent(
                         this,
@@ -1699,7 +1724,7 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                     )
                 )
             }
-            .show()
+        }
     }
 
     private fun toggleModelVisibility() {
@@ -1740,11 +1765,11 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 }
         }
 
-        modelButton.text =
+        modelButton.contentDescription =
             if (modelVisible) {
-                "3D روشن"
+                "مدل سه‌بعدی روشن"
             } else {
-                "3D"
+                "مدل سه‌بعدی"
             }
         modelButton
             .backgroundTintList =
@@ -1785,7 +1810,7 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         frozenModelScaleCorrection = 1.0
         modelButton.isEnabled = false
         modelButton.alpha = 0.45f
-        modelButton.text = "3D"
+        modelButton.contentDescription = "مدل سه‌بعدی"
         modelButton.backgroundTintList =
             ColorStateList.valueOf(
                 Ui.SURFACE_2
@@ -1793,68 +1818,70 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     }
 
     private fun showToolsDialog() {
-        val items =
-            arrayOf(
-                "برداشت‌ها",
-                "خروجی ZIP",
-                "مشخصات دوربین",
-                "تنظیمات",
-                "ریست Anchor مدل"
-            )
-
-        AlertDialog.Builder(this)
-            .setTitle("ابزار")
-            .setItems(items) {
-                    _,
-                    which ->
-                if (
-                    recording &&
-                    which in
-                    listOf(
-                        0,
-                        1,
-                        3,
-                        4
-                    )
+        CaptureSheets.showTools(
+            this,
+            listOf(
+                CaptureSheets.ToolAction(
+                    title = "برداشت‌ها",
+                    subtitle = "تاریخچه و QA",
+                    iconRes =
+                        R.drawable.ic_history_action,
+                    enabled = !recording
                 ) {
-                    toast(
-                        "برای این گزینه اول ضبط را متوقف کن."
+                    startActivity(
+                        Intent(
+                            this,
+                            SessionManagerActivity::class.java
+                        )
                     )
-                    return@setItems
+                },
+                CaptureSheets.ToolAction(
+                    title = "خروجی R4",
+                    subtitle = "ZIP + Bridge",
+                    iconRes =
+                        R.drawable.ic_export_action,
+                    enabled =
+                        !recording &&
+                            exportButton.isEnabled
+                ) {
+                    shareLatestSession()
+                },
+                CaptureSheets.ToolAction(
+                    title = "دوربین",
+                    subtitle = "رزولوشن و QA",
+                    iconRes =
+                        R.drawable.ic_camera_info_action
+                ) {
+                    showCameraInfoDialog()
+                },
+                CaptureSheets.ToolAction(
+                    title = "تنظیمات",
+                    subtitle = "Capture profile",
+                    iconRes =
+                        R.drawable.ic_settings_action,
+                    enabled = !recording
+                ) {
+                    startActivity(
+                        Intent(
+                            this,
+                            SettingsActivity::class.java
+                        )
+                    )
+                },
+                CaptureSheets.ToolAction(
+                    title = "ریست 3D",
+                    subtitle = "Anchor دوباره",
+                    iconRes =
+                        R.drawable.ic_cube_action,
+                    enabled = !recording
+                ) {
+                    resetModelAnchor()
+                    toast(
+                        "Anchor مدل ریست شد؛ QR را دوباره تثبیت کن."
+                    )
                 }
-
-                when (which) {
-                    0 ->
-                        startActivity(
-                            Intent(
-                                this,
-                                SessionManagerActivity::class.java
-                            )
-                        )
-                    1 ->
-                        shareLatestSession()
-                    2 ->
-                        showCameraInfoDialog()
-                    3 ->
-                        startActivity(
-                            Intent(
-                                this,
-                                SettingsActivity::class.java
-                            )
-                        )
-                    4 -> {
-                        resetModelAnchor()
-                        toast(
-                            "Anchor مدل ریست شد؛ QR را دوباره تثبیت کن."
-                        )
-                    }
-                }
-            }
-            .setNegativeButton(
-                "بستن",
-                null
             )
-            .show()
+        )
     }
 
     private fun showProjectDialog() {
@@ -2005,8 +2032,15 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             }
 
             runOnUiThread {
-                recordButton.text = "■ پایان برداشت"
-                recordButton.backgroundTintList = ColorStateList.valueOf(Ui.RED)
+                recordButton.setIconResource(
+                    R.drawable.ic_stop_capture
+                )
+                recordButton.contentDescription =
+                    "پایان برداشت"
+                recordButton.backgroundTintList =
+                    ColorStateList.valueOf(
+                        Ui.RED
+                    )
                 exportButton.isEnabled = false
                 exportButton.alpha = 0.45f
             }
@@ -2046,11 +2080,39 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         telemetry = null
         pendingTrackData.clear()
 
+        val completedDir =
+            currentSessionDir
+        if (
+            completedDir != null
+        ) {
+            runCatching {
+                R4CompatibilityExporter.write(
+                    this,
+                    completedDir
+                )
+            }.onFailure {
+                toast(
+                    "هشدار R4 Bridge: " +
+                        (
+                            it.message
+                                ?: it.javaClass.simpleName
+                            )
+                )
+            }
+        }
+
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         runOnUiThread {
-            recordButton.text = "● شروع برداشت"
-            recordButton.backgroundTintList = ColorStateList.valueOf(Ui.GREEN)
+            recordButton.setIconResource(
+                R.drawable.ic_record_capture
+            )
+            recordButton.contentDescription =
+                "شروع برداشت"
+            recordButton.backgroundTintList =
+                ColorStateList.valueOf(
+                    Ui.RED
+                )
             refreshExportAvailability()
         }
 
