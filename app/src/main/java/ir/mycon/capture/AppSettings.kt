@@ -49,6 +49,34 @@ class AppSettings(context: Context) {
                 )
                 .apply()
 
+    var focusMode: String
+        get() =
+            prefs.getString(
+                "focus_mode",
+                "auto"
+            ) ?: "auto"
+        set(value) =
+            prefs.edit()
+                .putString(
+                    "focus_mode",
+                    value
+                )
+                .apply()
+
+    var torchEnabled: Boolean
+        get() =
+            prefs.getBoolean(
+                "torch_enabled",
+                false
+            )
+        set(value) =
+            prefs.edit()
+                .putBoolean(
+                    "torch_enabled",
+                    value
+                )
+                .apply()
+
     var lastProject: String
         get() = prefs.getString("last_project", "") ?: ""
         set(value) = prefs.edit().putString("last_project", value).apply()

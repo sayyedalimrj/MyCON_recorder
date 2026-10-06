@@ -25,7 +25,9 @@ class TelemetryRecorder(
     context: Context,
     val sessionDir: File,
     private val locationTracker: LocationTracker,
-    private val cameraSelection: CameraSelection?
+    private val cameraSelection: CameraSelection?,
+    private val focusMode: String,
+    private val torchEnabled: Boolean
 ) : SensorEventListener {
 
     private val poseWriter =
@@ -520,7 +522,7 @@ class TelemetryRecorder(
                 )
                 .put(
                     "app_version",
-                    "0.5.0"
+                    "0.6.0"
                 )
                 .put(
                     "started_utc",
@@ -614,6 +616,50 @@ class TelemetryRecorder(
                     cameraSelection
                         ?.toJson()
                         ?: JSONObject.NULL
+                )
+                .put(
+                    "capture_controls",
+                    JSONObject()
+                        .put(
+                            "focus_mode",
+                            focusMode
+                        )
+                        .put(
+                            "torch_enabled",
+                            torchEnabled
+                        )
+                        .put(
+                            "eis_mode",
+                            "OFF"
+                        )
+                        .put(
+                            "digital_zoom",
+                            1.0
+                        )
+                        .put(
+                            "single_camera_config_locked",
+                            true
+                        )
+                )
+                .put(
+                    "sfm_hints",
+                    JSONObject()
+                        .put(
+                            "matching",
+                            "SEQUENTIAL"
+                        )
+                        .put(
+                            "share_intrinsics_within_session",
+                            true
+                        )
+                        .put(
+                            "use_full_resolution",
+                            true
+                        )
+                        .put(
+                            "pose_prior_policy",
+                            "PRIOR_NOT_GROUND_TRUTH"
+                        )
                 )
                 .put(
                     "notes",

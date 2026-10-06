@@ -1,6 +1,7 @@
 package ir.mycon.capture
 
 import android.os.Bundle
+import android.view.View
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import androidx.appcompat.app.AppCompatActivity
@@ -11,67 +12,87 @@ import com.google.android.material.switchmaterial.SwitchMaterial
 class SettingsActivity : AppCompatActivity() {
     private lateinit var settings: AppSettings
 
-    override fun onCreate(savedInstanceState: Bundle?) {
+    override fun onCreate(
+        savedInstanceState: Bundle?
+    ) {
         settings = AppSettings(this)
         settings.applyTheme()
         super.onCreate(savedInstanceState)
         Ui.edgeToEdge(this)
 
         val scroll = ScrollView(this)
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(
-                Ui.dp(this@SettingsActivity, 18),
-                Ui.dp(this@SettingsActivity, 18),
-                Ui.dp(this@SettingsActivity, 18),
-                Ui.dp(this@SettingsActivity, 18)
-            )
-        }
+        val root =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+                setPadding(
+                    Ui.dp(
+                        this@SettingsActivity,
+                        16
+                    ),
+                    Ui.dp(
+                        this@SettingsActivity,
+                        16
+                    ),
+                    Ui.dp(
+                        this@SettingsActivity,
+                        16
+                    ),
+                    Ui.dp(
+                        this@SettingsActivity,
+                        16
+                    )
+                )
+            }
         scroll.addView(root)
         Ui.insetWholeRoot(scroll)
 
         root.addView(
             Ui.title(
                 this,
-                "تنظیمات MyCON Recorder",
-                24f
+                "تنظیمات",
+                22f
             )
         )
         root.addView(
             Ui.label(
                 this,
-                "پروفایل دوربین روی Session بعدی اعمال می‌شود. برای کار پایان‌نامه حالت Scientific HQ توصیه می‌شود.",
-                13f
-            )
-        )
-        Ui.addSpacer(root, 18)
-
-        root.addView(
-            Ui.title(
-                this,
-                "کیفیت علمی فیلم‌برداری",
-                18f
-            )
-        )
-        root.addView(
-            Ui.label(
-                this,
-                "HQ30 اولویت را به بیشترین رزولوشن CPU قابل ضبط و لنز عقب استاندارد/واید می‌دهد. Motion 60 برای حرکت سریع‌تر است ولی ممکن است رزولوشن کمتر، مصرف بیشتر یا افت FPS در نور کم داشته باشد.",
+                "پیش‌فرض‌ها برای ورودی هندسی/SfM تنظیم شده‌اند.",
                 12f
             )
         )
-        Ui.addSpacer(root, 10)
+        Ui.addSpacer(
+            root,
+            14
+        )
+
+        root.addView(
+            sectionTitle(
+                "کیفیت ضبط"
+            )
+        )
+        root.addView(
+            Ui.label(
+                this,
+                "HQ30 انتخاب پیشنهادی است؛ 60 برای حرکت سریع‌تر.",
+                11.5f
+            )
+        )
+        Ui.addSpacer(
+            root,
+            7
+        )
 
         val profileGroup =
             MaterialButtonToggleGroup(this).apply {
-                orientation = LinearLayout.VERTICAL
                 isSingleSelection = true
                 isSelectionRequired = true
             }
 
         fun profileButton(
             text: String,
-            profile: CaptureProfile
+            profile:
+                CaptureProfile
         ): MaterialButton =
             Ui.button(
                 this,
@@ -79,317 +100,483 @@ class SettingsActivity : AppCompatActivity() {
                 Ui.SURFACE_2
             ).apply {
                 id =
-                    android.view.View
-                        .generateViewId()
+                    View.generateViewId()
                 tag = profile.key
+                textSize = 12f
             }
 
         val hq =
             profileButton(
-                "Scientific HQ • 30 FPS",
-                CaptureProfile.SCIENTIFIC_HQ30
+                "HQ 30",
+                CaptureProfile
+                    .SCIENTIFIC_HQ30
             )
         val motion =
             profileButton(
-                "Motion • 60 FPS",
-                CaptureProfile.MOTION_60
+                "60 FPS",
+                CaptureProfile
+                    .MOTION_60
             )
         val auto =
             profileButton(
-                "ARCore Auto",
-                CaptureProfile.ARCORE_AUTO
+                "Auto",
+                CaptureProfile
+                    .ARCORE_AUTO
             )
 
+        val profileLp =
+            LinearLayout.LayoutParams(
+                0,
+                Ui.dp(
+                    this,
+                    44
+                ),
+                1f
+            )
         profileGroup.addView(
             hq,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                Ui.dp(this, 50)
-            )
+            profileLp
         )
         profileGroup.addView(
             motion,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                Ui.dp(this, 50)
-            )
+            profileLp
         )
         profileGroup.addView(
             auto,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                Ui.dp(this, 50)
-            )
+            profileLp
         )
 
-        val selectedId =
+        profileGroup.check(
             when (
                 CaptureProfile.fromKey(
                     settings.captureProfile
                 )
             ) {
-                CaptureProfile.SCIENTIFIC_HQ30 ->
+                CaptureProfile
+                    .SCIENTIFIC_HQ30 ->
                     hq.id
-                CaptureProfile.MOTION_60 ->
+                CaptureProfile
+                    .MOTION_60 ->
                     motion.id
-                CaptureProfile.ARCORE_AUTO ->
+                CaptureProfile
+                    .ARCORE_AUTO ->
                     auto.id
             }
-        profileGroup.check(selectedId)
+        )
 
         profileGroup
             .addOnButtonCheckedListener {
                     _,
-                    checkedId,
-                    isChecked ->
-                if (!isChecked) {
+                    id,
+                    checked ->
+                if (!checked) {
                     return@addOnButtonCheckedListener
                 }
-                val key =
+                val value =
                     listOf(
                         hq,
                         motion,
                         auto
                     )
-                        .firstOrNull {
-                            it.id == checkedId
+                        .first {
+                            it.id == id
                         }
-                        ?.tag as? String
-                        ?: return@addOnButtonCheckedListener
-                settings.captureProfile = key
+                        .tag as String
+                settings.captureProfile =
+                    value
             }
 
         root.addView(profileGroup)
 
-        Ui.addSpacer(root, 8)
+        Ui.addSpacer(
+            root,
+            16
+        )
+
         root.addView(
+            sectionTitle(
+                "تصویر"
+            )
+        )
+
+        val imageCard =
+            Ui.card(this)
+        val imageBox =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+                setPadding(
+                    Ui.dp(
+                        this@SettingsActivity,
+                        12
+                    ),
+                    Ui.dp(
+                        this@SettingsActivity,
+                        10
+                    ),
+                    Ui.dp(
+                        this@SettingsActivity,
+                        12
+                    ),
+                    Ui.dp(
+                        this@SettingsActivity,
+                        10
+                    )
+                )
+            }
+
+        imageBox.addView(
             Ui.label(
                 this,
-                "نکته: اگر 60 FPS روی گوشی پشتیبانی نشود، اپ خودکار به Scientific HQ 30 برمی‌گردد. اگر هیچ High-Res CPU stream در دسترس نباشد، قبل از ضبط هشدار می‌بینی.",
-                12f
+                "Focus",
+                11.5f
             )
         )
+        Ui.addSpacer(
+            imageBox,
+            5
+        )
 
-        Ui.addSpacer(root, 20)
-
-        fun toggle(
-            title: String,
-            subtitle: String,
-            initial: Boolean,
-            onChange: (Boolean) -> Unit
-        ) {
-            val card = Ui.card(this)
-            val content =
-                LinearLayout(this).apply {
-                    orientation =
-                        LinearLayout.VERTICAL
-                    setPadding(
-                        Ui.dp(
-                            this@SettingsActivity,
-                            16
-                        ),
-                        Ui.dp(
-                            this@SettingsActivity,
-                            12
-                        ),
-                        Ui.dp(
-                            this@SettingsActivity,
-                            16
-                        ),
-                        Ui.dp(
-                            this@SettingsActivity,
-                            12
-                        )
-                    )
-                }
-            val row =
-                LinearLayout(this).apply {
-                    orientation =
-                        LinearLayout.HORIZONTAL
-                    gravity =
-                        android.view.Gravity
-                            .CENTER_VERTICAL
-                }
-            val textBox =
-                LinearLayout(this).apply {
-                    orientation =
-                        LinearLayout.VERTICAL
-                }
-            textBox.addView(
-                Ui.title(
-                    this,
-                    title,
-                    16f
-                )
-            )
-            textBox.addView(
-                Ui.label(
-                    this,
-                    subtitle,
-                    12f
-                )
-            )
-            row.addView(
-                textBox,
-                LinearLayout.LayoutParams(
-                    0,
-                    LinearLayout.LayoutParams
-                        .WRAP_CONTENT,
-                    1f
-                )
-            )
-            val sw =
-                SwitchMaterial(this).apply {
-                    isChecked = initial
-                    setOnCheckedChangeListener {
-                            _,
-                            checked ->
-                        onChange(checked)
-                    }
-                }
-            row.addView(sw)
-            content.addView(row)
-            card.addView(content)
-            root.addView(
-                card,
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams
-                        .MATCH_PARENT,
-                    LinearLayout.LayoutParams
-                        .WRAP_CONTENT
-                ).apply {
-                    bottomMargin =
-                        Ui.dp(
-                            this@SettingsActivity,
-                            10
-                        )
-                }
-            )
-        }
-
-        toggle(
-            "بازخورد لرزشی",
-            "هنگام شناسایی QR معتبر",
-            settings.hapticFeedback
-        ) {
-            settings.hapticFeedback = it
-        }
-        toggle(
-            "بازخورد صوتی",
-            "صدای کوتاه تأیید برای Anchor معتبر",
-            settings.soundFeedback
-        ) {
-            settings.soundFeedback = it
-        }
-        toggle(
-            "ثبت GNSS",
-            "مختصات GPS فقط داده کمکی است، نه Survey Ground Truth",
-            settings.gpsLogging
-        ) {
-            settings.gpsLogging = it
-        }
-        toggle(
-            "اسکن خودکار QR",
-            "در حین Preview و ضبط به‌صورت پیوسته",
-            settings.autoQrScan
-        ) {
-            settings.autoQrScan = it
-        }
-        toggle(
-            "روشن ماندن صفحه",
-            "در طول برداشت صفحه خاموش نشود",
-            settings.keepScreenOn
-        ) {
-            settings.keepScreenOn = it
-        }
-        toggle(
-            "هشدار کیفیت زنده",
-            "Tracking، حرکت سریع، نور کم، exposure/blur و Controlها",
-            settings.qualityWarnings
-        ) {
-            settings.qualityWarnings = it
-        }
-
-        Ui.addSpacer(root, 8)
-        root.addView(
-            Ui.title(
+        val focusGroup =
+            MaterialButtonToggleGroup(this).apply {
+                isSingleSelection = true
+                isSelectionRequired = true
+            }
+        val autoFocus =
+            Ui.button(
                 this,
-                "ظاهر",
-                18f
+                "Auto",
+                Ui.SURFACE_2
+            ).apply {
+                id =
+                    View.generateViewId()
+                textSize = 12f
+            }
+        val fixedFocus =
+            Ui.button(
+                this,
+                "Fixed",
+                Ui.SURFACE_2
+            ).apply {
+                id =
+                    View.generateViewId()
+                textSize = 12f
+            }
+
+        focusGroup.addView(
+            autoFocus,
+            LinearLayout.LayoutParams(
+                0,
+                Ui.dp(
+                    this,
+                    42
+                ),
+                1f
             )
         )
-        Ui.addSpacer(root, 10)
+        focusGroup.addView(
+            fixedFocus,
+            LinearLayout.LayoutParams(
+                0,
+                Ui.dp(
+                    this,
+                    42
+                ),
+                1f
+            )
+        )
+        focusGroup.check(
+            if (
+                settings.focusMode ==
+                "fixed"
+            ) {
+                fixedFocus.id
+            } else {
+                autoFocus.id
+            }
+        )
+        focusGroup
+            .addOnButtonCheckedListener {
+                    _,
+                    id,
+                    checked ->
+                if (!checked) {
+                    return@addOnButtonCheckedListener
+                }
+                settings.focusMode =
+                    if (
+                        id ==
+                        fixedFocus.id
+                    ) {
+                        "fixed"
+                    } else {
+                        "auto"
+                    }
+            }
+        imageBox.addView(
+            focusGroup
+        )
+
+        Ui.addSpacer(
+            imageBox,
+            8
+        )
+        imageBox.addView(
+            compactSwitch(
+                "چراغ کمکی",
+                "فقط برای محیط کم‌نور؛ پیش‌فرض خاموش",
+                settings.torchEnabled
+            ) {
+                settings.torchEnabled =
+                    it
+            }
+        )
+        imageBox.addView(
+            Ui.label(
+                this,
+                "EIS: خاموش  •  Digital zoom: ندارد  •  Exposure/ISO: پایش خودکار",
+                11f
+            )
+        )
+
+        imageCard.addView(
+            imageBox
+        )
+        root.addView(
+            imageCard
+        )
+
+        Ui.addSpacer(
+            root,
+            14
+        )
+
+        root.addView(
+            sectionTitle(
+                "برداشت"
+            )
+        )
+        val captureCard =
+            Ui.card(this)
+        val captureBox =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+                setPadding(
+                    Ui.dp(
+                        this@SettingsActivity,
+                        12
+                    ),
+                    Ui.dp(
+                        this@SettingsActivity,
+                        8
+                    ),
+                    Ui.dp(
+                        this@SettingsActivity,
+                        12
+                    ),
+                    Ui.dp(
+                        this@SettingsActivity,
+                        8
+                    )
+                )
+            }
+        captureBox.addView(
+            compactSwitch(
+                "QA زنده",
+                "Blur، نور، Tracking و Control",
+                settings.qualityWarnings
+            ) {
+                settings.qualityWarnings =
+                    it
+            }
+        )
+        captureBox.addView(
+            compactSwitch(
+                "GNSS",
+                "داده کمکی؛ QR مرجع اصلی است",
+                settings.gpsLogging
+            ) {
+                settings.gpsLogging =
+                    it
+            }
+        )
+        captureCard.addView(
+            captureBox
+        )
+        root.addView(
+            captureCard
+        )
+
+        Ui.addSpacer(
+            root,
+            12
+        )
+
+        val advanced =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+                visibility =
+                    View.GONE
+            }
+
+        val advancedCard =
+            Ui.card(this)
+        val advancedBox =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+                setPadding(
+                    Ui.dp(
+                        this@SettingsActivity,
+                        12
+                    ),
+                    Ui.dp(
+                        this@SettingsActivity,
+                        8
+                    ),
+                    Ui.dp(
+                        this@SettingsActivity,
+                        12
+                    ),
+                    Ui.dp(
+                        this@SettingsActivity,
+                        8
+                    )
+                )
+            }
+
+        advancedBox.addView(
+            compactSwitch(
+                "Auto QR",
+                "اسکن پیوسته Marker",
+                settings.autoQrScan
+            ) {
+                settings.autoQrScan =
+                    it
+            }
+        )
+        advancedBox.addView(
+            compactSwitch(
+                "روشن ماندن صفحه",
+                "در زمان ضبط",
+                settings.keepScreenOn
+            ) {
+                settings.keepScreenOn =
+                    it
+            }
+        )
+        advancedBox.addView(
+            compactSwitch(
+                "ویبره QR",
+                "بازخورد Anchor معتبر",
+                settings.hapticFeedback
+            ) {
+                settings.hapticFeedback =
+                    it
+            }
+        )
+        advancedBox.addView(
+            compactSwitch(
+                "صدای QR",
+                "بازخورد کوتاه",
+                settings.soundFeedback
+            ) {
+                settings.soundFeedback =
+                    it
+            }
+        )
+
+        Ui.addSpacer(
+            advancedBox,
+            8
+        )
+        advancedBox.addView(
+            Ui.label(
+                this,
+                "Theme",
+                11.5f
+            )
+        )
+        Ui.addSpacer(
+            advancedBox,
+            5
+        )
 
         val themeGroup =
-            MaterialButtonToggleGroup(this).apply {
+            MaterialButtonToggleGroup(
+                this
+            ).apply {
                 isSingleSelection = true
                 isSelectionRequired = true
             }
 
         fun themeButton(
-            text: String,
+            label: String,
             key: String
         ): MaterialButton =
-            Ui.button(this, text).apply {
+            Ui.button(
+                this,
+                label,
+                Ui.SURFACE_2
+            ).apply {
                 id =
-                    android.view.View
-                        .generateViewId()
+                    View.generateViewId()
                 tag = key
+                textSize = 12f
             }
 
         val system =
             themeButton(
-                "سیستم",
+                "System",
                 "system"
             )
         val dark =
             themeButton(
-                "تیره",
+                "Dark",
                 "dark"
             )
         val light =
             themeButton(
-                "روشن",
+                "Light",
                 "light"
+            )
+
+        val themeLp =
+            LinearLayout.LayoutParams(
+                0,
+                Ui.dp(
+                    this,
+                    42
+                ),
+                1f
             )
         themeGroup.addView(
             system,
-            LinearLayout.LayoutParams(
-                0,
-                Ui.dp(this, 48),
-                1f
-            )
+            themeLp
         )
         themeGroup.addView(
             dark,
-            LinearLayout.LayoutParams(
-                0,
-                Ui.dp(this, 48),
-                1f
-            )
+            themeLp
         )
         themeGroup.addView(
             light,
-            LinearLayout.LayoutParams(
-                0,
-                Ui.dp(this, 48),
-                1f
-            )
+            themeLp
         )
-
-        val selected =
+        themeGroup.check(
             when (settings.theme) {
                 "dark" -> dark.id
                 "light" -> light.id
                 else -> system.id
             }
-        themeGroup.check(selected)
+        )
         themeGroup
             .addOnButtonCheckedListener {
                     _,
-                    checkedId,
-                    isChecked ->
-                if (!isChecked) {
+                    id,
+                    checked ->
+                if (!checked) {
                     return@addOnButtonCheckedListener
                 }
                 val key =
@@ -398,27 +585,157 @@ class SettingsActivity : AppCompatActivity() {
                         dark,
                         light
                     )
-                        .firstOrNull {
-                            it.id == checkedId
+                        .first {
+                            it.id == id
                         }
-                        ?.tag as? String
-                        ?: return@addOnButtonCheckedListener
-                if (key != settings.theme) {
+                        .tag as String
+                if (
+                    key !=
+                    settings.theme
+                ) {
                     settings.theme = key
                     settings.applyTheme()
                 }
             }
-        root.addView(themeGroup)
+        advancedBox.addView(
+            themeGroup
+        )
+        advancedCard.addView(
+            advancedBox
+        )
+        advanced.addView(
+            advancedCard
+        )
+        root.addView(
+            advanced
+        )
 
-        Ui.addSpacer(root, 24)
+        val advancedButton =
+            Ui.button(
+                this,
+                "تنظیمات بیشتر",
+                Ui.SURFACE_2
+            ).apply {
+                setOnClickListener {
+                    val show =
+                        advanced.visibility !=
+                            View.VISIBLE
+                    advanced.visibility =
+                        if (show) {
+                            View.VISIBLE
+                        } else {
+                            View.GONE
+                        }
+                    text =
+                        if (show) {
+                            "بستن تنظیمات بیشتر"
+                        } else {
+                            "تنظیمات بیشتر"
+                        }
+                }
+            }
+        root.addView(
+            advancedButton,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                Ui.dp(
+                    this,
+                    44
+                )
+            )
+        )
+
+        Ui.addSpacer(
+            root,
+            12
+        )
         root.addView(
             Ui.label(
                 this,
-                "نسخه رابط کاربری: 0.5.0 • Scientific Capture • schema v1",
-                12f
+                "v0.6 • COLMAP-ready capture",
+                11f
             )
         )
 
         setContentView(scroll)
+    }
+
+    private fun sectionTitle(
+        text: String
+    ) =
+        Ui.title(
+            this,
+            text,
+            16f
+        )
+
+    private fun compactSwitch(
+        title: String,
+        subtitle: String,
+        initial: Boolean,
+        onChange:
+            (Boolean) -> Unit
+    ): View {
+        val row =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.HORIZONTAL
+                gravity =
+                    android.view.Gravity
+                        .CENTER_VERTICAL
+                setPadding(
+                    0,
+                    Ui.dp(
+                        this@SettingsActivity,
+                        3
+                    ),
+                    0,
+                    Ui.dp(
+                        this@SettingsActivity,
+                        3
+                    )
+                )
+            }
+
+        val texts =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+            }
+        texts.addView(
+            Ui.title(
+                this,
+                title,
+                14f
+            )
+        )
+        texts.addView(
+            Ui.label(
+                this,
+                subtitle,
+                10.5f
+            )
+        )
+
+        row.addView(
+            texts,
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f
+            )
+        )
+
+        row.addView(
+            SwitchMaterial(this).apply {
+                isChecked = initial
+                setOnCheckedChangeListener {
+                        _,
+                        value ->
+                    onChange(value)
+                }
+            }
+        )
+        return row
     }
 }

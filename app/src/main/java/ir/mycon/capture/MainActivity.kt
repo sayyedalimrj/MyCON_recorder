@@ -17,6 +17,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -71,18 +72,26 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     private lateinit var exportButton: MaterialButton
     private lateinit var modelButton: MaterialButton
     private lateinit var modelPill: TextView
+    private lateinit var metaLine: TextView
 
     private val background = BackgroundRenderer()
     private val modelRenderer = ArModelRenderer()
     private val scaleCalibrator = MultiAnchorScaleCalibrator()
-    private val modelPoseAccumulators =
-        mutableMapOf<String, PoseAccumulator>()
+    private val stableModelAnchor =
+        StableModelAnchorController()
+    private val pendingModelObservations =
+        ConcurrentLinkedQueue<
+            Pair<
+                AnchorPayload,
+                QrPoseEstimate
+            >
+        >()
 
     @Volatile
     private var modelVisible = false
 
     @Volatile
-    private var modelPose: com.google.ar.core.Pose? = null
+    private var frozenModelScaleCorrection: Double = 1.0
 
     @Volatile
     private var modelPayload: AnchorPayload? = null
@@ -100,6 +109,8 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     private var latestRotationalBlurPx: Double? = null
 
     private var arSession: Session? = null
+    private var appliedFocusMode = ""
+    private var appliedTorchEnabled = false
     private var installRequested = false
     private var arResumed = false
     private var viewportWidth = 1
@@ -156,7 +167,8 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 setEGLContextClientVersion(2)
                 preserveEGLContextOnPause = true
                 setRenderer(this@MainActivity)
-                renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
+                renderMode =
+                    GLSurfaceView.RENDERMODE_CONTINUOUSLY
             }
         root.addView(
             glView,
@@ -166,82 +178,195 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             )
         )
 
-        topCard = Ui.card(this, alphaSurface = true)
-        val top = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(Ui.dp(this@MainActivity, 14), Ui.dp(this@MainActivity, 12), Ui.dp(this@MainActivity, 14), Ui.dp(this@MainActivity, 12))
-        }
+        topCard =
+            Ui.card(
+                this,
+                alphaSurface = true
+            )
+        val top =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+                setPadding(
+                    Ui.dp(
+                        this@MainActivity,
+                        10
+                    ),
+                    Ui.dp(
+                        this@MainActivity,
+                        8
+                    ),
+                    Ui.dp(
+                        this@MainActivity,
+                        10
+                    ),
+                    Ui.dp(
+                        this@MainActivity,
+                        8
+                    )
+                )
+            }
 
-        val header = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        header.addView(Ui.title(this, "MyCON Recorder", 19f), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        recordingStatus = Ui.pill(this, "READY", Ui.BLUE)
-        header.addView(recordingStatus)
+        val header =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.HORIZONTAL
+                gravity =
+                    Gravity.CENTER_VERTICAL
+            }
+        header.addView(
+            Ui.title(
+                this,
+                "MyCON",
+                16f
+            ),
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f
+            )
+        )
+        recordingStatus =
+            Ui.pill(
+                this,
+                "READY",
+                Ui.BLUE
+            )
+        header.addView(
+            recordingStatus
+        )
         top.addView(header)
 
-        Ui.addSpacer(top, 9)
+        Ui.addSpacer(
+            top,
+            6
+        )
 
-        val row1 = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        trackingPill = Ui.pill(this, "Tracking …", Ui.AMBER)
-        projectPill = Ui.pill(this, activeProject?.let { "Project $it" } ?: "Project —", if (activeProject == null) Ui.AMBER else Ui.BLUE).apply {
-            setOnClickListener { showProjectDialog() }
-        }
-        gpsPill = Ui.pill(this, "GPS …", Ui.AMBER)
+        val stateRow =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.HORIZONTAL
+                gravity =
+                    Gravity.CENTER_VERTICAL
+            }
 
-        val chipLp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-            marginEnd = Ui.dp(this@MainActivity, 6)
-        }
-        row1.addView(trackingPill, chipLp)
-        row1.addView(projectPill, chipLp)
-        row1.addView(gpsPill, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        top.addView(row1)
+        trackingPill =
+            Ui.pill(
+                this,
+                "Tracking …",
+                Ui.AMBER
+            )
 
-        Ui.addSpacer(top, 7)
+        projectPill =
+            Ui.pill(
+                this,
+                activeProject?.let {
+                    "P $it"
+                } ?: "Project —",
+                if (
+                    activeProject == null
+                ) {
+                    Ui.AMBER
+                } else {
+                    Ui.BLUE
+                }
+            ).apply {
+                setOnClickListener {
+                    showProjectDialog()
+                }
+            }
 
         cameraPill =
             Ui.pill(
                 this,
-                "Video config …",
+                "Video …",
                 Ui.AMBER
             ).apply {
                 setOnClickListener {
                     showCameraInfoDialog()
                 }
             }
-        top.addView(
+
+        fun compactLp(
+            weight: Float,
+            withGap: Boolean
+        ): LinearLayout.LayoutParams =
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                weight
+            ).apply {
+                if (withGap) {
+                    marginEnd =
+                        Ui.dp(
+                            this@MainActivity,
+                            5
+                        )
+                }
+            }
+
+        stateRow.addView(
+            trackingPill,
+            compactLp(
+                0.85f,
+                true
+            )
+        )
+        stateRow.addView(
+            projectPill,
+            compactLp(
+                0.8f,
+                true
+            )
+        )
+        stateRow.addView(
             cameraPill,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
+            compactLp(
+                1.35f,
+                false
             )
         )
+        top.addView(stateRow)
 
-        Ui.addSpacer(top, 7)
-
-        anchorPill = Ui.pill(this, "Anchor —", Ui.PURPLE)
-        top.addView(
-            anchorPill,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
+        Ui.addSpacer(
+            top,
+            5
         )
 
-        Ui.addSpacer(top, 7)
+        metaLine =
+            Ui.label(
+                this,
+                "GPS …  ·  Anchor —  ·  3D —",
+                11.5f
+            ).apply {
+                maxLines = 1
+                ellipsize =
+                    android.text.TextUtils
+                        .TruncateAt.END
+            }
+        top.addView(metaLine)
 
-        modelPill = Ui.pill(this, "3D Model —", Ui.MUTED)
-        top.addView(
-            modelPill,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
+        // Keep the individual status views initialized for the existing
+        // state-update logic, but do not spend screen space on them.
+        gpsPill =
+            Ui.pill(
+                this,
+                "GPS …",
+                Ui.AMBER
             )
-        )
+        anchorPill =
+            Ui.pill(
+                this,
+                "Anchor —",
+                Ui.PURPLE
+            )
+        modelPill =
+            Ui.pill(
+                this,
+                "3D —",
+                Ui.MUTED
+            )
+
         topCard.addView(top)
 
         root.addView(
@@ -251,25 +376,94 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 Gravity.TOP
             ).apply {
-                leftMargin = Ui.dp(this@MainActivity, 8)
-                rightMargin = Ui.dp(this@MainActivity, 8)
-                topMargin = Ui.dp(this@MainActivity, 8)
+                leftMargin =
+                    Ui.dp(
+                        this@MainActivity,
+                        7
+                    )
+                rightMargin =
+                    Ui.dp(
+                        this@MainActivity,
+                        7
+                    )
+                topMargin =
+                    Ui.dp(
+                        this@MainActivity,
+                        7
+                    )
             }
         )
 
-        guideCard = Ui.card(this, alphaSurface = true).apply {
-            setCardBackgroundColor(ColorUtils.setAlphaComponent(Ui.SURFACE_SOLID, 220))
-        }
-        val guideBox = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(Ui.dp(this@MainActivity, 18), Ui.dp(this@MainActivity, 14), Ui.dp(this@MainActivity, 18), Ui.dp(this@MainActivity, 14))
-        }
-        guideTitle = Ui.title(this, "در حال آماده‌سازی…", 16f).apply { gravity = Gravity.CENTER }
-        guideDetail = Ui.label(this, "ARCore را آماده می‌کنیم.", 12f).apply { gravity = Gravity.CENTER }
-        guideBox.addView(guideTitle)
-        guideBox.addView(guideDetail)
-        guideCard.addView(guideBox)
+        guideCard =
+            Ui.card(
+                this,
+                alphaSurface = true
+            ).apply {
+                setCardBackgroundColor(
+                    ColorUtils.setAlphaComponent(
+                        Ui.SURFACE_SOLID,
+                        225
+                    )
+                )
+                visibility =
+                    View.GONE
+            }
+
+        val guideBox =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+                gravity =
+                    Gravity.CENTER
+                setPadding(
+                    Ui.dp(
+                        this@MainActivity,
+                        14
+                    ),
+                    Ui.dp(
+                        this@MainActivity,
+                        9
+                    ),
+                    Ui.dp(
+                        this@MainActivity,
+                        14
+                    ),
+                    Ui.dp(
+                        this@MainActivity,
+                        9
+                    )
+                )
+            }
+
+        guideTitle =
+            Ui.title(
+                this,
+                "",
+                14f
+            ).apply {
+                gravity =
+                    Gravity.CENTER
+            }
+        guideDetail =
+            Ui.label(
+                this,
+                "",
+                11f
+            ).apply {
+                gravity =
+                    Gravity.CENTER
+            }
+
+        guideBox.addView(
+            guideTitle
+        )
+        guideBox.addView(
+            guideDetail
+        )
+        guideCard.addView(
+            guideBox
+        )
+
         root.addView(
             guideCard,
             FrameLayout.LayoutParams(
@@ -277,47 +471,111 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 Gravity.CENTER
             ).apply {
-                leftMargin = Ui.dp(this@MainActivity, 26)
-                rightMargin = Ui.dp(this@MainActivity, 26)
+                leftMargin =
+                    Ui.dp(
+                        this@MainActivity,
+                        24
+                    )
+                rightMargin =
+                    Ui.dp(
+                        this@MainActivity,
+                        24
+                    )
             }
         )
 
-        bottomDock = Ui.card(this, alphaSurface = true)
-        val dock = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(Ui.dp(this@MainActivity, 10), Ui.dp(this@MainActivity, 10), Ui.dp(this@MainActivity, 10), Ui.dp(this@MainActivity, 10))
-        }
-
-        recordButton = Ui.primaryButton(this, "● شروع برداشت").apply {
-            setOnClickListener { toggleRecording() }
-        }
-        dock.addView(recordButton, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(this, 60)))
-
-        Ui.addSpacer(dock, 8)
-
-        val actionsTop =
+        bottomDock =
+            Ui.card(
+                this,
+                alphaSurface = true
+            )
+        val dock =
             LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
+                orientation =
+                    LinearLayout.VERTICAL
+                setPadding(
+                    Ui.dp(
+                        this@MainActivity,
+                        8
+                    ),
+                    Ui.dp(
+                        this@MainActivity,
+                        8
+                    ),
+                    Ui.dp(
+                        this@MainActivity,
+                        8
+                    ),
+                    Ui.dp(
+                        this@MainActivity,
+                        8
+                    )
+                )
             }
+
+        recordButton =
+            Ui.primaryButton(
+                this,
+                "● شروع برداشت"
+            ).apply {
+                minHeight =
+                    Ui.dp(
+                        this@MainActivity,
+                        52
+                    )
+                setOnClickListener {
+                    toggleRecording()
+                }
+            }
+
+        dock.addView(
+            recordButton,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                Ui.dp(
+                    this,
+                    52
+                )
+            )
+        )
+
+        Ui.addSpacer(
+            dock,
+            6
+        )
+
+        val actions =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.HORIZONTAL
+            }
+
         val qrButton =
             Ui.button(
                 this,
-                "QR پروژه",
+                "QR",
                 Ui.SURFACE_2
             ).apply {
                 setOnClickListener {
-                    startActivity(
-                        Intent(
-                            this@MainActivity,
-                            QrGeneratorActivity::class.java
+                    if (recording) {
+                        toast(
+                            "برای بازکردن QR اول ضبط را متوقف کن."
                         )
-                    )
+                    } else {
+                        startActivity(
+                            Intent(
+                                this@MainActivity,
+                                QrGeneratorActivity::class.java
+                            )
+                        )
+                    }
                 }
             }
+
         modelButton =
             Ui.button(
                 this,
-                "مدل AR",
+                "3D",
                 Ui.SURFACE_2
             ).apply {
                 isEnabled = false
@@ -327,96 +585,62 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 }
             }
 
-        val sessionsButton =
+        val toolsButton =
             Ui.button(
                 this,
-                "برداشت‌ها",
+                "ابزار",
                 Ui.SURFACE_2
             ).apply {
                 setOnClickListener {
-                    startActivity(
-                        Intent(
-                            this@MainActivity,
-                            SessionManagerActivity::class.java
-                        )
-                    )
+                    showToolsDialog()
                 }
             }
 
-        val topLp =
+        val actionLp =
             LinearLayout.LayoutParams(
                 0,
-                Ui.dp(this, 48),
+                Ui.dp(
+                    this,
+                    44
+                ),
                 1f
             ).apply {
                 marginEnd =
-                    Ui.dp(this@MainActivity, 6)
+                    Ui.dp(
+                        this@MainActivity,
+                        5
+                    )
             }
-        actionsTop.addView(qrButton, topLp)
-        actionsTop.addView(modelButton, topLp)
-        actionsTop.addView(
-            sessionsButton,
+
+        actions.addView(
+            qrButton,
+            actionLp
+        )
+        actions.addView(
+            modelButton,
+            actionLp
+        )
+        actions.addView(
+            toolsButton,
             LinearLayout.LayoutParams(
                 0,
-                Ui.dp(this, 48),
+                Ui.dp(
+                    this,
+                    44
+                ),
                 1f
             )
         )
-        dock.addView(actionsTop)
+        dock.addView(actions)
 
-        Ui.addSpacer(dock, 7)
-
-        val actionsBottom =
-            LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-            }
-
+        // Export is intentionally moved into the Tools sheet.
         exportButton =
             Ui.button(
                 this,
-                "خروجی ZIP",
+                "ZIP",
                 Ui.SURFACE_2
-            ).apply {
-                setOnClickListener {
-                    shareLatestSession()
-                }
-            }
-        val settingsButton =
-            Ui.button(
-                this,
-                "تنظیمات",
-                Ui.SURFACE_2
-            ).apply {
-                setOnClickListener {
-                    startActivity(
-                        Intent(
-                            this@MainActivity,
-                            SettingsActivity::class.java
-                        )
-                    )
-                }
-            }
-
-        actionsBottom.addView(
-            exportButton,
-            LinearLayout.LayoutParams(
-                0,
-                Ui.dp(this, 48),
-                1f
-            ).apply {
-                marginEnd =
-                    Ui.dp(this@MainActivity, 6)
-            }
-        )
-        actionsBottom.addView(
-            settingsButton,
-            LinearLayout.LayoutParams(
-                0,
-                Ui.dp(this, 48),
-                1f
             )
-        )
-        dock.addView(actionsBottom)
+
         bottomDock.addView(dock)
 
         root.addView(
@@ -426,13 +650,29 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 Gravity.BOTTOM
             ).apply {
-                leftMargin = Ui.dp(this@MainActivity, 8)
-                rightMargin = Ui.dp(this@MainActivity, 8)
-                bottomMargin = Ui.dp(this@MainActivity, 8)
+                leftMargin =
+                    Ui.dp(
+                        this@MainActivity,
+                        7
+                    )
+                rightMargin =
+                    Ui.dp(
+                        this@MainActivity,
+                        7
+                    )
+                bottomMargin =
+                    Ui.dp(
+                        this@MainActivity,
+                        7
+                    )
             }
         )
 
-        Ui.insetOverlayPanels(root, topCard, bottomDock)
+        Ui.insetOverlayPanels(
+            root,
+            topCard,
+            bottomDock
+        )
         setContentView(root)
         refreshExportAvailability()
     }
@@ -506,10 +746,17 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         if (
             arSession != null &&
             activeSelection != null &&
-            activeSelection.requestedProfile !=
-                settings.captureProfile &&
+            (
+                activeSelection.requestedProfile !=
+                    settings.captureProfile ||
+                    appliedFocusMode !=
+                        settings.focusMode ||
+                    appliedTorchEnabled !=
+                        settings.torchEnabled
+                ) &&
             !recording
         ) {
+            resetModelAnchor()
             try {
                 arSession?.close()
             } catch (_: Exception) {
@@ -577,13 +824,32 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                         val config =
                             Config(session).apply {
                                 focusMode =
-                                    Config.FocusMode.AUTO
+                                    if (
+                                        settings.focusMode ==
+                                        "fixed"
+                                    ) {
+                                        Config.FocusMode.FIXED
+                                    } else {
+                                        Config.FocusMode.AUTO
+                                    }
                                 updateMode =
                                     Config.UpdateMode.LATEST_CAMERA_IMAGE
                                 imageStabilizationMode =
                                     Config.ImageStabilizationMode.OFF
+                                flashMode =
+                                    if (
+                                        settings.torchEnabled
+                                    ) {
+                                        Config.FlashMode.TORCH
+                                    } else {
+                                        Config.FlashMode.OFF
+                                    }
                             }
                         session.configure(config)
+                        appliedFocusMode =
+                            settings.focusMode
+                        appliedTorchEnabled =
+                            settings.torchEnabled
                     }
             }
 
@@ -676,19 +942,22 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             onArFrame(frame)
 
             val payload = modelPayload
-            val pose = modelPose
+            val pose =
+                stableModelAnchor
+                    .anchorPoseOrNull()
             if (
                 modelVisible &&
                 payload != null &&
                 payload.hasModel() &&
                 pose != null
             ) {
-                val correction =
-                    scaleCalibrator.scaleCorrection()
                 val trueSizeM =
                     payload.modelSizeM ?: 1.0
                 val arSideLength =
-                    (trueSizeM / correction)
+                    (
+                        trueSizeM /
+                            frozenModelScaleCorrection
+                        )
                         .toFloat()
                 modelRenderer.draw(
                     frame.camera,
@@ -703,6 +972,45 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     private fun onArFrame(frame: Frame) {
         latestTrackingState = frame.camera.trackingState
         updateFrameImageQuality(frame)
+
+        val session = arSession
+        if (session != null) {
+            while (true) {
+                val item =
+                    pendingModelObservations
+                        .poll()
+                        ?: break
+                val payload =
+                    item.first
+                val estimate =
+                    item.second
+                val status =
+                    stableModelAnchor.feed(
+                        session,
+                        payload,
+                        estimate
+                    )
+
+                modelPayload = payload
+                modelReprojectionErrorPx =
+                    estimate.reprojectionErrorPx
+
+                if (status.locked) {
+                    runOnUiThread {
+                        modelButton.isEnabled =
+                            true
+                        modelButton.alpha =
+                            1f
+                        modelButton.text =
+                            if (modelVisible) {
+                                "3D روشن"
+                            } else {
+                                "3D"
+                            }
+                    }
+                }
+            }
+        }
 
         if (recording) {
             telemetry?.recordFrame(frame)
@@ -776,7 +1084,7 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                                     it
                                 )
                             } ?: ""
-                    "Video ${selectedCamera.imageWidth}×${selectedCamera.imageHeight} • ${selectedCamera.fpsMax}fps • Cam ${selectedCamera.cameraId}$fov$exposure"
+                    "${selectedCamera.imageWidth}×${selectedCamera.imageHeight}/${selectedCamera.fpsMax}$exposure"
                 }
             val cameraColor =
                 when {
@@ -887,6 +1195,31 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 modelColor
             )
 
+            val lock =
+                stableModelAnchor.status()
+            val modelMeta =
+                when {
+                    lock.locked ->
+                        "3D LOCK"
+                    modelPayload?.hasModel() == true ->
+                        "3D ${lock.samples}/8"
+                    else ->
+                        "3D —"
+                }
+            val blurMeta =
+                latestRotationalBlurPx
+                    ?.let {
+                        String.format(
+                            Locale.US,
+                            "blur %.1fpx",
+                            it
+                        )
+                    }
+                    ?: "blur —"
+
+            metaLine.text =
+                "$gpsText  ·  $anchorText  ·  $modelMeta  ·  $blurMeta"
+
             if (recording) {
                 val elapsed = (now - recordingStartedElapsedMs).coerceAtLeast(0L)
                 val min = elapsed / 60000L
@@ -936,6 +1269,21 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                     ) +
                     ". فاصله مرکز Markerها و size_mm را دوباره چک کن.",
                 Ui.RED
+            )
+            return
+        }
+
+        if (
+            modelPayload?.hasModel() == true &&
+            !stableModelAnchor
+                .hasLockedAnchor()
+        ) {
+            val lock =
+                stableModelAnchor.status()
+            setGuide(
+                "تثبیت مدل ${lock.samples}/8",
+                "QR مدل را 1–2 ثانیه کامل و تقریباً ثابت داخل کادر نگه دار؛ بعد از قفل، مدل دیگر با هر تشخیص QR جابه‌جا نمی‌شود.",
+                Ui.AMBER
             )
             return
         }
@@ -1100,11 +1448,39 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 1_000_000_000.0
     }
 
-    private fun setGuide(title: String, detail: String, color: Int) {
+    private fun setGuide(
+        title: String,
+        detail: String,
+        color: Int
+    ) {
+        val important =
+            color == Ui.RED ||
+                color == Ui.AMBER
+
+        guideCard.visibility =
+            if (important) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+
+        if (!important) {
+            return
+        }
+
         guideTitle.text = title
         guideDetail.text = detail
-        guideCard.strokeColor = ColorUtils.setAlphaComponent(color, 180)
-        guideCard.setCardBackgroundColor(ColorUtils.setAlphaComponent(Ui.SURFACE_SOLID, 225))
+        guideCard.strokeColor =
+            ColorUtils.setAlphaComponent(
+                color,
+                180
+            )
+        guideCard.setCardBackgroundColor(
+            ColorUtils.setAlphaComponent(
+                Ui.SURFACE_SOLID,
+                225
+            )
+        )
     }
 
     private fun onQrDetection(detection: QrFrameScanner.Detection) {
@@ -1153,31 +1529,33 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 payload.modelId ==
                 AnchorPayload.TEST_MODEL_ID
             ) {
-                val key =
-                    "${payload.project}/${payload.anchor}"
-                val accumulator =
-                    modelPoseAccumulators.getOrPut(key) {
-                        PoseAccumulator(5)
-                    }
-                accumulator.add(
-                    estimate.worldPose
-                )
-
-                modelPose =
-                    accumulator.average()
-                        ?: estimate.worldPose
                 modelPayload = payload
                 modelReprojectionErrorPx =
                     estimate.reprojectionErrorPx
+                pendingModelObservations.offer(
+                    payload to estimate
+                )
 
+                val lock =
+                    stableModelAnchor.status()
                 runOnUiThread {
-                    modelButton.isEnabled = true
-                    modelButton.alpha = 1f
-                    modelButton.text =
-                        if (modelVisible) {
-                            "مدل: روشن"
+                    modelButton.isEnabled =
+                        lock.locked
+                    modelButton.alpha =
+                        if (lock.locked) {
+                            1f
                         } else {
-                            "مدل AR"
+                            0.55f
+                        }
+                    modelButton.text =
+                        if (lock.locked) {
+                            if (modelVisible) {
+                                "3D روشن"
+                            } else {
+                                "3D"
+                            }
+                        } else {
+                            "تثبیت ${lock.samples}/8"
                         }
                 }
             }
@@ -1325,28 +1703,51 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     }
 
     private fun toggleModelVisibility() {
-        val payload = modelPayload
-        val pose = modelPose
+        val payload =
+            modelPayload
+        val pose =
+            stableModelAnchor
+                .anchorPoseOrNull()
 
         if (
             payload == null ||
             !payload.hasModel() ||
-            pose == null
+            pose == null ||
+            !stableModelAnchor
+                .hasLockedAnchor()
         ) {
+            val status =
+                stableModelAnchor.status()
             toast(
-                "اول QR دارای مدل را اسکن کن. برای تست، TEST01 / A001 را بگیر."
+                "برای ثابت‌شدن مدل، QR را حدود 1–2 ثانیه نگه دار • ${status.samples}/8 فریم پایدار"
             )
             return
         }
 
-        modelVisible = !modelVisible
+        modelVisible =
+            !modelVisible
+
+        if (modelVisible) {
+            frozenModelScaleCorrection =
+                if (
+                    scaleCalibrator
+                        .isScalePlausible()
+                ) {
+                    scaleCalibrator
+                        .scaleCorrection()
+                } else {
+                    1.0
+                }
+        }
+
         modelButton.text =
             if (modelVisible) {
-                "مدل: روشن"
+                "3D روشن"
             } else {
-                "مدل AR"
+                "3D"
             }
-        modelButton.backgroundTintList =
+        modelButton
+            .backgroundTintList =
             ColorStateList.valueOf(
                 if (modelVisible) {
                     Ui.BLUE
@@ -1355,11 +1756,11 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 }
             )
 
-        val reproj =
-            modelReprojectionErrorPx
         if (modelVisible) {
+            val reproj =
+                modelReprojectionErrorPx
             toast(
-                "مدل واقعی ${payload.modelSizeM ?: 1.0}m فعال شد" +
+                "مدل روی Anchor قفل شد" +
                     (
                         if (reproj != null) {
                             String.format(
@@ -1373,6 +1774,87 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                     )
             )
         }
+    }
+
+    private fun resetModelAnchor() {
+        modelVisible = false
+        stableModelAnchor.reset()
+        pendingModelObservations.clear()
+        modelPayload = null
+        modelReprojectionErrorPx = null
+        frozenModelScaleCorrection = 1.0
+        modelButton.isEnabled = false
+        modelButton.alpha = 0.45f
+        modelButton.text = "3D"
+        modelButton.backgroundTintList =
+            ColorStateList.valueOf(
+                Ui.SURFACE_2
+            )
+    }
+
+    private fun showToolsDialog() {
+        val items =
+            arrayOf(
+                "برداشت‌ها",
+                "خروجی ZIP",
+                "مشخصات دوربین",
+                "تنظیمات",
+                "ریست Anchor مدل"
+            )
+
+        AlertDialog.Builder(this)
+            .setTitle("ابزار")
+            .setItems(items) {
+                    _,
+                    which ->
+                if (
+                    recording &&
+                    which in
+                    listOf(
+                        0,
+                        1,
+                        3,
+                        4
+                    )
+                ) {
+                    toast(
+                        "برای این گزینه اول ضبط را متوقف کن."
+                    )
+                    return@setItems
+                }
+
+                when (which) {
+                    0 ->
+                        startActivity(
+                            Intent(
+                                this,
+                                SessionManagerActivity::class.java
+                            )
+                        )
+                    1 ->
+                        shareLatestSession()
+                    2 ->
+                        showCameraInfoDialog()
+                    3 ->
+                        startActivity(
+                            Intent(
+                                this,
+                                SettingsActivity::class.java
+                            )
+                        )
+                    4 -> {
+                        resetModelAnchor()
+                        toast(
+                            "Anchor مدل ریست شد؛ QR را دوباره تثبیت کن."
+                        )
+                    }
+                }
+            }
+            .setNegativeButton(
+                "بستن",
+                null
+            )
+            .show()
     }
 
     private fun showProjectDialog() {
@@ -1398,6 +1880,7 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 activeProject = null
                 settings.lastProject = ""
                 latestAnchorLabel = "—"
+                resetModelAnchor()
             }
             .setPositiveButton("ثبت") { _, _ ->
                 val value = input.text.toString().trim()
@@ -1405,6 +1888,7 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                     activeProject = value
                     settings.lastProject = value
                     latestAnchorLabel = "—"
+                    resetModelAnchor()
                 }
             }
             .show()
@@ -1509,7 +1993,9 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                     context = this,
                     sessionDir = dir,
                     locationTracker = locationTracker,
-                    cameraSelection = cameraSelection
+                    cameraSelection = cameraSelection,
+                    focusMode = settings.focusMode,
+                    torchEnabled = settings.torchEnabled
                 )
             recording = true
             recordingStartedElapsedMs = SystemClock.elapsedRealtime()

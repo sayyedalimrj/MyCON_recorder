@@ -77,17 +77,29 @@ class QrFrameScanner(
             .addOnSuccessListener { codes ->
                 for (barcode in codes) {
                     val raw = barcode.rawValue ?: continue
-                    if (AnchorPayload.parse(raw) == null) continue
+                    val payload =
+                        AnchorPayload.parse(raw)
+                            ?: continue
 
                     val points =
-                        barcode.cornerPoints?.map { it.x to it.y } ?: continue
+                        barcode.cornerPoints?.map { it.x to it.y }
+                            ?: continue
                     if (points.size != 4) continue
 
-                    val previous = lastAcceptedNs[raw]
+                    val debounceNs =
+                        if (payload.hasModel()) {
+                            180_000_000L
+                        } else {
+                            750_000_000L
+                        }
+
+                    val previous =
+                        lastAcceptedNs[raw]
                     if (
                         previous != null &&
                         timestampNs > previous &&
-                        timestampNs - previous < 750_000_000L
+                        timestampNs - previous <
+                            debounceNs
                     ) {
                         continue
                     }
