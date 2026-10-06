@@ -8,11 +8,16 @@ enum R4CompatibilityExporter {
         let qrURL = sessionDir.appendingPathComponent("qr_events.jsonl")
 
         let manifest = try jsonObject(sessionURL)
-        let firstPose = try? String(contentsOf: poseURL, encoding: .utf8)
-            .split(whereSeparator: \.isNewline)
-            .dropFirst()
-            .first
-            .map { String($0).split(separator: ",", omittingEmptySubsequences: false).map(String.init) }
+
+        var firstPose: [String]? = nil
+        if let poseText = try? String(contentsOf: poseURL, encoding: .utf8) {
+            let lines = poseText.split(whereSeparator: \.isNewline)
+            if lines.count > 1 {
+                firstPose = String(lines[1])
+                    .split(separator: ",", omittingEmptySubsequences: false)
+                    .map { String($0) }
+            }
+        }
 
         var camera: [String: Any] = [
             "schema": "mycon.r4.camera.v1",
@@ -20,14 +25,14 @@ enum R4CompatibilityExporter {
             "capture_controls": manifest["capture_controls"] ?? NSNull()
         ]
         if let p = firstPose, p.count >= 16 {
-            camera["first_frame_intrinsics"] = [
-                "fx": Double(p[10]) ?? NSNull(),
-                "fy": Double(p[11]) ?? NSNull(),
-                "cx": Double(p[12]) ?? NSNull(),
-                "cy": Double(p[13]) ?? NSNull(),
-                "width": Int(p[14]) ?? NSNull(),
-                "height": Int(p[15]) ?? NSNull()
-            ]
+            var intrinsics: [String: Any] = [:]
+            intrinsics["fx"] = Double(p[10]) ?? NSNull()
+            intrinsics["fy"] = Double(p[11]) ?? NSNull()
+            intrinsics["cx"] = Double(p[12]) ?? NSNull()
+            intrinsics["cy"] = Double(p[13]) ?? NSNull()
+            intrinsics["width"] = Int(p[14]) ?? NSNull()
+            intrinsics["height"] = Int(p[15]) ?? NSNull()
+            camera["first_frame_intrinsics"] = intrinsics
         }
         try writeJSON(camera, to: sessionDir.appendingPathComponent("r4_camera.json"))
 
