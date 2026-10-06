@@ -39,15 +39,34 @@ jobs:
           set -o pipefail
           xcodebuild             -project MyCONRecorderIOS.xcodeproj             -scheme MyCONRecorderIOS             -configuration Debug             -sdk iphonesimulator             -destination 'generic/platform=iOS Simulator'             -derivedDataPath build             CODE_SIGNING_ALLOWED=NO             build
 
-      - name: Package simulator app
+      - name: Build unsigned device app
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project MyCONRecorderIOS.xcodeproj \
+            -scheme MyCONRecorderIOS \
+            -configuration Debug \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build-device \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package build artifacts
         working-directory: ios
         run: |
           cd build/Build/Products/Debug-iphonesimulator
           zip -qry ../../../../MyCON-Recorder-iOS-simulator.zip "MyCON Recorder.app"
+          cd ../../../../
+          cd build-device/Build/Products/Debug-iphoneos
+          zip -qry ../../../../MyCON-Recorder-iOS-device-unsigned.zip "MyCON Recorder.app"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: MyCON-Recorder-iOS-simulator
-          path: ios/MyCON-Recorder-iOS-simulator.zip
+          name: MyCON-Recorder-iOS-builds
+          path: |
+            ios/MyCON-Recorder-iOS-simulator.zip
+            ios/MyCON-Recorder-iOS-device-unsigned.zip
           if-no-files-found: error
           retention-days: 14
