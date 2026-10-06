@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
 
 class AppSettings(context: Context) {
+    private val appContext = context.applicationContext
     private val prefs =
         context.getSharedPreferences("mycon_settings", Context.MODE_PRIVATE)
 
@@ -86,8 +87,13 @@ class AppSettings(context: Context) {
         set(value) = prefs.edit().putString("last_project", value).apply()
 
     fun applyTheme() {
+        val mode = theme
+        Ui.applyPalette(
+            context = appContext,
+            mode = mode
+        )
         AppCompatDelegate.setDefaultNightMode(
-            when (theme) {
+            when (mode) {
                 "light" -> AppCompatDelegate.MODE_NIGHT_NO
                 "dark" -> AppCompatDelegate.MODE_NIGHT_YES
                 else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
