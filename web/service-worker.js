@@ -1,8 +1,46 @@
-const CACHE="mycon-web-v1";
+const CACHE="mycon-web-v2";
 const CORE=["./","./index.html","./app.css","./app.js","./manifest.webmanifest","./icon.svg"];
-self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting())));
-self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener("fetch",e=>{
-  if(e.request.method!=="GET")return;
-  e.respondWith(caches.match(e.request).then(hit=>hit||fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy)).catch(()=>{});return r;}).catch(()=>caches.match("./index.html"))));
+const OPTIONAL=[
+  "https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.js",
+  "https://cdn.jsdelivr.net/npm/jszip@3.10.2/dist/jszip.min.js",
+  "https://ajax.googleapis.com/ajax/libs/model-viewer/4.3.1/model-viewer.min.js"
+];
+
+self.addEventListener("install",event=>{
+  event.waitUntil((async()=>{
+    const cache=await caches.open(CACHE);
+    await cache.addAll(CORE);
+    await Promise.allSettled(OPTIONAL.map(async url=>{
+      const response=await fetch(url,{mode:"cors"});
+      if(response.ok)await cache.put(url,response);
+    }));
+    await self.skipWaiting();
+  })());
+});
+
+self.addEventListener("activate",event=>{
+  event.waitUntil((async()=>{
+    const keys=await caches.keys();
+    await Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)));
+    await self.clients.claim();
+  })());
+});
+
+self.addEventListener("fetch",event=>{
+  if(event.request.method!=="GET")return;
+  event.respondWith((async()=>{
+    const cached=await caches.match(event.request);
+    if(cached)return cached;
+    try{
+      const response=await fetch(event.request);
+      if(response.ok){
+        const cache=await caches.open(CACHE);
+        cache.put(event.request,response.clone()).catch(()=>{});
+      }
+      return response;
+    }catch{
+      if(event.request.mode==="navigate")return caches.match("./index.html");
+      throw new Error("offline");
+    }
+  })());
 });
