@@ -41,6 +41,9 @@ jobs:
       - name: Check Python session validator
         run: python -m py_compile tools/mycon_session_check.py
 
+      - name: Check QR pose math contract
+        run: python tools/qr_pose_math_check.py
+
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
 
