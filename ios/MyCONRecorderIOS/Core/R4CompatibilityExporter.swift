@@ -82,7 +82,7 @@ enum R4CompatibilityExporter {
         let video = (manifest["video_dataset"] as? String) ?? "arcore_recording.mp4"
         let compatibility: [String: Any] = [
             "schema": "mycon.r4.capture_compatibility.v1",
-            "app_version": "1.0.0-ios",
+            "app_version": "1.0.1-ios",
             "pipeline_family": "MyCon R4 v4.8.x",
             "preserve_scientific_order": true,
             "files": [
