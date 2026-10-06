@@ -480,29 +480,34 @@ object ScientificCameraSelector {
         }
 
         val pairs =
-            focalLengths.mapNotNull {
-                focal ->
-                if (focal <= 0f) {
-                    null
-                } else {
-                    val fov =
-                        2.0 *
-                            atan(
-                                sensor.width.toDouble() /
-                                    (
-                                        2.0 *
-                                            focal.toDouble()
-                                        )
-                            ) *
-                            180.0 /
-                            PI
-                    fov to
-                        focal.toDouble()
-                }
+            mutableListOf<Pair<Double, Double>>()
+
+        for (focal in focalLengths) {
+            if (focal <= 0f) {
+                continue
             }
+            val fov =
+                2.0 *
+                    atan(
+                        sensor.width.toDouble() /
+                            (
+                                2.0 *
+                                    focal.toDouble()
+                                )
+                    ) *
+                    180.0 /
+                    PI
+            pairs +=
+                fov to
+                    focal.toDouble()
+        }
 
         return pairs.minByOrNull {
-            abs(it.first - 70.0)
+            pair ->
+            abs(
+                pair.first -
+                    70.0
+            )
         }
     }
 
