@@ -13,6 +13,9 @@ struct MyCONRecorderIOSApp: App {
                 MarkerBuilderView()
                     .tabItem { Label("QR", systemImage: "qrcode.viewfinder") }
 
+                RoomPlanScanView()
+                    .tabItem { Label("Room", systemImage: "square.3.layers.3d") }
+
                 SessionLibraryView(controller: controller)
                     .tabItem { Label("Sessions", systemImage: "archivebox") }
             }
