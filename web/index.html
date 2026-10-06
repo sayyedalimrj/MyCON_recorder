@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MyCON">
+  <title>MyCON Web</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./app.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">MYCON • FIELD COMPANION</div>
+        <h1>MyCON Web</h1>
+      </div>
+      <span id="onlineBadge" class="badge">آنلاین</span>
+    </header>
+
+    <section id="homePanel" class="panel active">
+      <article class="hero card">
+        <div>
+          <span class="pill ok">PWA آماده iPhone</span>
+          <h2>داشبورد مشترک MyCON</h2>
+          <p>مدیریت کنترل‌ها، ساخت QR استاندارد، بررسی بسته‌های برداشت و QA. برای Capture علمی شش‌درجه‌آزادی از نسخه Native iOS/Android استفاده کن.</p>
+        </div>
+        <div class="hero-mark">M</div>
+      </article>
+
+      <div class="grid two">
+        <article class="card">
+          <div class="card-title">ساخت کنترل پروژه</div>
+          <p>Payload استاندارد <code>mycon://anchor/v1</code> با checksum دقیق Android ساخته می‌شود.</p>
+          <button class="primary" data-go="markerPanel">کنترل جدید</button>
+        </article>
+        <article class="card">
+          <div class="card-title">بررسی برداشت</div>
+          <p>ZIP خروجی MyCON را بدون آپلود سرور، داخل خود مرورگر باز و کنترل کن.</p>
+          <button class="secondary" data-go="inspectPanel">باز کردن ZIP</button>
+        </article>
+      </div>
+
+      <article class="card info">
+        <strong>نصب روی iPhone:</strong>
+        Safari → Share → <b>Add to Home Screen</b>. داده‌های فرم و پروژه‌ها روی همان دستگاه نگه‌داری می‌شوند.
+      </article>
+
+      <article class="card">
+        <div class="row between">
+          <div class="card-title">کنترل‌های اخیر</div>
+          <button id="clearSaved" class="ghost small">پاک‌کردن</button>
+        </div>
+        <div id="savedMarkers" class="stack empty">هنوز کنترلی ذخیره نشده.</div>
+      </article>
+    </section>
+
+    <section id="markerPanel" class="panel">
+      <article class="card">
+        <div class="row between">
+          <div>
+            <div class="eyebrow">CONTROL MARKER V1</div>
+            <h2>کنترل / QR پروژه</h2>
+          </div>
+          <span id="markerStatus" class="badge">آماده</span>
+        </div>
+
+        <form id="markerForm" class="form-grid">
+          <label>Project<input id="project" required value="MYCON_PROJECT"></label>
+          <label>Anchor<input id="anchor" required value="A001"></label>
+          <label>CRS<input id="crs" required value="LOCAL:P001"></label>
+          <label>Floor / Zone<input id="floor" value=""></label>
+          <label>X (m)<input id="x" type="number" step="0.0001" required value="0"></label>
+          <label>Y (m)<input id="y" type="number" step="0.0001" required value="0"></label>
+          <label>Z (m)<input id="z" type="number" step="0.0001" required value="0"></label>
+          <label>Mount
+            <select id="mount"><option>VERTICAL</option><option>HORIZONTAL</option></select>
+          </label>
+          <label>Azimuth (°)<input id="azimuth" type="number" step="0.0001" value="0"></label>
+          <label>QR symbol size (mm)<input id="sizeMm" type="number" min="20" step="0.1" value="160"></label>
+          <label>Model ID<input id="modelId" placeholder="optional"></label>
+          <label>Model size (m)<input id="modelSize" type="number" min="0.01" step="0.01" value="1"></label>
+        </form>
+
+        <div class="actions">
+          <button id="generateMarker" class="primary">ساخت / بروزرسانی</button>
+          <button id="saveMarker" class="secondary">ذخیره روی دستگاه</button>
+        </div>
+      </article>
+
+      <article class="card qr-card">
+        <canvas id="qrCanvas" width="512" height="512" aria-label="QR control"></canvas>
+        <div class="payload-wrap">
+          <div class="muted">Payload</div>
+          <textarea id="payload" rows="5" readonly></textarea>
+          <div class="actions">
+            <button id="copyPayload" class="secondary">Copy</button>
+            <button id="downloadQr" class="primary">PNG</button>
+            <button id="downloadJson" class="secondary">JSON</button>
+          </div>
+          <div id="signatureLine" class="mono mini"></div>
+        </div>
+      </article>
+    </section>
+
+    <section id="inspectPanel" class="panel">
+      <article class="card">
+        <div class="eyebrow">LOCAL • NO UPLOAD</div>
+        <h2>Session Inspector</h2>
+        <p>فایل <code>*_MYCON.zip</code> را انتخاب کن. محتوا فقط داخل مرورگر خوانده می‌شود.</p>
+        <label class="drop">
+          <input id="zipInput" type="file" accept=".zip,application/zip">
+          <span>انتخاب بسته MyCON</span>
+        </label>
+        <div id="inspectMessage" class="muted"></div>
+      </article>
+
+      <div id="qaGrid" class="grid qa"></div>
+
+      <article class="card">
+        <div class="row between">
+          <div class="card-title">Compatibility Gate</div>
+          <span id="compatBadge" class="badge">بدون فایل</span>
+        </div>
+        <div id="compatList" class="checklist"></div>
+      </article>
+
+      <article class="card">
+        <div class="card-title">Manifest</div>
+        <pre id="manifestView" class="codebox">—</pre>
+      </article>
+    </section>
+  </main>
+
+  <nav class="bottom-nav">
+    <button class="nav active" data-go="homePanel">خانه</button>
+    <button class="nav" data-go="markerPanel">QR</button>
+    <button class="nav" data-go="inspectPanel">QA</button>
+  </nav>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
