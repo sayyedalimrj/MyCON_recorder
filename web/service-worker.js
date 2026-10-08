@@ -1,4 +1,4 @@
-const CACHE="mycon-web-v1.0.1-model-hotfix";
+const CACHE="mycon-web-v1.1.0-sensors";
 const CORE=["./","./index.html","./app.css","./app.js","./manifest.webmanifest","./icon.svg","./models/catalog.json","./models/calibration-cube-1m-v2.gltf"];
 const OPTIONAL=[
   "https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.js",
