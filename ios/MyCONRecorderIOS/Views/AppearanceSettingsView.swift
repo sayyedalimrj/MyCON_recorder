@@ -23,9 +23,9 @@ struct AppearanceSettingsView: View {
                 }
 
                 Section("MyCON") {
-                    LabeledContent("Version", value: "1.0.0")
+                    LabeledContent("Version", value: "1.1.0")
                     LabeledContent("Capture contract", value: "v1")
-                    Text("Native ARKit capture remains the scientific acquisition path. Web capture is a fallback only.")
+                    Text("Native Capture = scientific path.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
