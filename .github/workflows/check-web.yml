@@ -31,8 +31,8 @@ jobs:
           grep -q "MYCON_WEB_FALLBACK_CAPTURE" web/app.js
           grep -q "mycon.r4.capture_compatibility.v1" web/app.js
           grep -q "mycon.theme.v1" web/app.js
-          grep -q "MYCON 1.0" web/index.html
-          grep -q "builtinModelSelect" web/index.html
+          grep -q "MYCON 1.1" web/index.html
+          grep -q "builtinModelSelect" web/index.html\n          grep -q "MYCON_WEB_XR_DEPTH_CAPTURE" web/app.js\n          grep -q "depth-sensing" web/app.js\n          grep -q "mycon://capture" web/index.html
           python3 -m json.tool web/models/catalog.json >/dev/null
           python3 tools/validate_web_models.py
       - name: Static HTTP smoke test
