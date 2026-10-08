@@ -179,3 +179,22 @@ The Web app probes capabilities at runtime:
 - WebXR Depth Sensing is offered only on browsers that actually expose `immersive-ar` + `depth-sensing`.
 - On iPhone Safari, raw LiDAR is not exposed to ordinary web pages; MyCON shows a direct **Open iPhone app** handoff instead of pretending web depth is available.
 - WebXR depth is experimental auxiliary evidence and is explicitly excluded from R4 pose validation.
+
+
+## Android 1.2 sensor suite
+
+Android capture keeps the UI minimal and automatically records only the sensor streams that materially help trajectory and QA:
+
+- accelerometer
+- gyroscope
+- rotation vector
+- gravity
+- linear acceleration
+- game rotation vector
+- magnetic field
+- barometer / pressure
+- GNSS
+- ARCore pose/intrinsics
+- ARCore Raw Depth + confidence when supported
+
+Sampling is intentionally rate-limited per sensor so the added evidence does not unnecessarily inflate battery use or session size. A compact **Sensors** item in Tools shows what the current phone actually exposes. Each session also writes `sensor_manifest.json` with the real sensor vendor/name/range/resolution/rate and event counts.
