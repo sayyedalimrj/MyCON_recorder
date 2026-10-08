@@ -47,8 +47,17 @@ final class CaptureController: NSObject, ObservableObject {
         super.init()
         location.delegate = self
         location.desiredAccuracy = kCLLocationAccuracyBest
+        location.headingFilter = 2
         location.requestWhenInUseAuthorization()
         location.startUpdatingLocation()
+
+        lidarAvailable = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
+        smoothedDepthAvailable = ARWorldTrackingConfiguration.supportsFrameSemantics(.smoothedSceneDepth)
+        meshAvailable = ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh)
+        motionAvailable = motion.isDeviceMotionAvailable
+        barometerAvailable = CMAltimeter.isRelativeAltitudeAvailable()
+        gnssAvailable = CLLocationManager.locationServicesEnabled()
+        updateSensorSummary()
     }
 
     func attach(_ view: ARView) {
@@ -69,6 +78,9 @@ final class CaptureController: NSObject, ObservableObject {
 
         if ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
             c.frameSemantics.insert(.sceneDepth)
+        }
+        if ARWorldTrackingConfiguration.supportsFrameSemantics(.smoothedSceneDepth) {
+            c.frameSemantics.insert(.smoothedSceneDepth)
         }
         if ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification) {
             c.sceneReconstruction = .meshWithClassification
