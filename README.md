@@ -1,4 +1,4 @@
-# MyCON Recorder Suite 1.0
+# MyCON Recorder Suite 1.1
 
 MyCON is now a cross-platform field-capture suite for the MyCON R4 reconstruction/thesis pipeline:
 
@@ -149,3 +149,33 @@ See `docs/CROSS_PLATFORM_ARCHITECTURE.md` and `THIRD_PARTY_NOTICES.md`.
 - 1 m calibration cube included for immediate Viewer / AR / measurement testing.
 - Version-aligned Android, iOS and capture manifests at 1.0.0.
 - GitHub Release workflow publishes Android, iOS build artifacts and Web package for v1.0.0.
+
+
+## MyCON 1.1 sensors
+
+### iPhone / iPad
+
+MyCON automatically uses the strongest available native sensors without forcing the operator through extra switches:
+
+- ARKit world tracking and camera intrinsics
+- LiDAR raw scene depth
+- smoothed scene depth
+- depth confidence
+- scene-reconstruction mesh
+- ARKit feature points
+- accelerometer / gyroscope / gravity / user acceleration
+- calibrated magnetic field and heading
+- barometer
+- GNSS
+- RoomPlan + USDZ on supported devices
+
+The Capture screen keeps this behind one compact **Sensors** sheet.
+
+### Web
+
+The Web app probes capabilities at runtime:
+
+- Camera + DeviceMotion + GNSS are used when available.
+- WebXR Depth Sensing is offered only on browsers that actually expose `immersive-ar` + `depth-sensing`.
+- On iPhone Safari, raw LiDAR is not exposed to ordinary web pages; MyCON shows a direct **Open iPhone app** handoff instead of pretending web depth is available.
+- WebXR depth is experimental auxiliary evidence and is explicitly excluded from R4 pose validation.
