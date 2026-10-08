@@ -333,7 +333,7 @@ object R4CompatibilityExporter {
                 )
                 .put(
                     "app_version",
-                    "1.1.0"
+                    "1.2.0"
                 )
                 .put(
                     "pipeline_family",
@@ -360,6 +360,10 @@ object R4CompatibilityExporter {
                         .put(
                             "imu",
                             "imu.csv"
+                        )
+                        .put(
+                            "sensor_manifest",
+                            "sensor_manifest.json"
                         )
                         .put(
                             "qr_events",
