@@ -2,7 +2,7 @@
   "name": "MyCON Field Capture Suite",
   "short_name": "MyCON",
   "id": "./",
-  "description": "MyCON 1.0 field capture, QR controls, scientific QA, 3D/AR viewing and fallback capture.",
+  "description": "MyCON 1.1 field capture, sensor-aware QA, LiDAR handoff, 3D/AR viewing and WebXR depth where supported.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
