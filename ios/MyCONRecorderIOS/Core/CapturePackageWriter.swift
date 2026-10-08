@@ -21,6 +21,7 @@ final class CapturePackageWriter {
     private var projects = Set<String>()
     private var anchors = Set<String>()
     private var firstCamera: [String: Any]?
+    private var spatialSummary: [String: Any] = [:]
     private let startedUTC = ISO8601DateFormatter().string(from: Date())
 
     init() throws {
@@ -68,7 +69,10 @@ final class CapturePackageWriter {
                 "fps_min": 0,
                 "fps_max": 0,
                 "high_resolution_cpu_stream": true,
-                "depth_supported": depthRecorder.supported
+                "depth_supported": depthRecorder.supported,
+                "smoothed_depth_supported": depthRecorder.smoothedSupported,
+                "scene_mesh_supported": ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh),
+                "scene_mesh_classification_supported": ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification)
             ]
         }
 
@@ -110,6 +114,13 @@ final class CapturePackageWriter {
 
     func recordDepth(_ frame: ARFrame) {
         depthRecorder.record(frame)
+    }
+
+    func recordSpatialSnapshot(_ frame: ARFrame) {
+        spatialSummary = SceneMeshRecorder.writeSnapshot(
+            frame: frame,
+            sessionDir: sessionDir
+        )
     }
 
     func recordIMU(timestamp: TimeInterval, sensor: String, values: [Double], accuracy: Int = 3) {
@@ -189,7 +200,7 @@ final class CapturePackageWriter {
         let manifest: [String: Any] = [
             "format": "MYCON_CAPTURE_SESSION",
             "format_version": 1,
-            "app_version": "1.0.1-ios",
+            "app_version": "1.1.0-ios",
             "platform": "ios",
             "tracking_provider": "ARKit",
             "started_utc": startedUTC,
@@ -211,10 +222,14 @@ final class CapturePackageWriter {
             "camera_selection": camera,
             "depth_capture": [
                 "supported": depthRecorder.supported,
+                "smoothed_supported": depthRecorder.smoothedSupported,
                 "sample_count": depthRecorder.sampleCount,
+                "raw_sample_count": depthRecorder.rawSampleCount,
+                "smoothed_sample_count": depthRecorder.smoothedSampleCount,
                 "index": "depth/depth_index.jsonl",
-                "sample_interval_s": 0.20
+                "sample_interval_s": depthRecorder.sampleInterval
             ],
+            "spatial_capture": spatialSummary,
             "capture_controls": [
                 "focus_mode": "ARKIT_MANAGED",
                 "torch_enabled": false,
@@ -228,7 +243,7 @@ final class CapturePackageWriter {
                 "use_full_resolution": true,
                 "pose_prior_policy": "PRIOR_NOT_GROUND_TRUTH"
             ],
-            "notes": "ARKit world pose is metric but session-local. Surveyed MYCON QR control markers align it to the project coordinate system. Optional LiDAR scene depth is stored as auxiliary geometry evidence only."
+            "notes": "ARKit world pose is metric but session-local. Surveyed MYCON QR controls align it to project coordinates. LiDAR raw/smoothed depth, confidence, scene mesh and sparse feature points are auxiliary geometry evidence and do not replace bundle adjustment."
         ]
         try writeJSON(manifest, name: "session.json")
         lock.unlock()
