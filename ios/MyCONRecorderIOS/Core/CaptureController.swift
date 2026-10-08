@@ -184,6 +184,37 @@ final class CaptureController: NSObject, ObservableObject {
                     sensor: "ROT_VEC",
                     values: [q.x,q.y,q.z,q.w]
                 )
+                self?.package?.recordIMU(
+                    timestamp: d.timestamp,
+                    sensor: "GRAVITY",
+                    values: [d.gravity.x,d.gravity.y,d.gravity.z]
+                )
+                self?.package?.recordIMU(
+                    timestamp: d.timestamp,
+                    sensor: "USER_ACCEL",
+                    values: [d.userAcceleration.x,d.userAcceleration.y,d.userAcceleration.z]
+                )
+                let magnetic = d.magneticField
+                self?.package?.recordIMU(
+                    timestamp: d.timestamp,
+                    sensor: "MAG_CAL",
+                    values: [magnetic.field.x,magnetic.field.y,magnetic.field.z],
+                    accuracy: Int(magnetic.accuracy.rawValue)
+                )
+            }
+        }
+
+        if CMAltimeter.isRelativeAltitudeAvailable() {
+            altimeter.startRelativeAltitudeUpdates(to: .init()) { [weak self] data, _ in
+                guard let data else { return }
+                self?.package?.recordIMU(
+                    timestamp: ProcessInfo.processInfo.systemUptime,
+                    sensor: "BARO",
+                    values: [
+                        data.pressure.doubleValue,
+                        data.relativeAltitude.doubleValue
+                    ]
+                )
             }
         }
     }
@@ -192,6 +223,8 @@ final class CaptureController: NSObject, ObservableObject {
         motion.stopAccelerometerUpdates()
         motion.stopGyroUpdates()
         motion.stopDeviceMotionUpdates()
+        altimeter.stopRelativeAltitudeUpdates()
+        location.stopUpdatingHeading()
         latestAngularSpeedRadS = 0
     }
 
