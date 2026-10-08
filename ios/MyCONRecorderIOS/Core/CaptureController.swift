@@ -454,4 +454,23 @@ extension CaptureController: CLLocationManagerDelegate {
             self?.latestLocation = last
         }
     }
+
+    nonisolated func locationManager(
+        _ manager: CLLocationManager,
+        didUpdateHeading newHeading: CLHeading
+    ) {
+        guard newHeading.headingAccuracy >= 0 else { return }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.package?.recordIMU(
+                timestamp: ProcessInfo.processInfo.systemUptime,
+                sensor: "HEADING",
+                values: [
+                    newHeading.magneticHeading,
+                    newHeading.trueHeading,
+                    newHeading.headingAccuracy
+                ]
+            )
+        }
+    }
 }
