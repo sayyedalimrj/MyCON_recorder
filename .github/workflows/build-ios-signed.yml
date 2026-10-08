@@ -17,7 +17,7 @@ on:
         default: false
         type: boolean
       attach_to_github_release:
-        description: Attach signed IPA to GitHub Release v1.0.1
+        description: Attach signed IPA to GitHub Release v1.1.0
         required: true
         default: true
         type: boolean
@@ -116,7 +116,7 @@ jobs:
 
           xcodebuild -exportArchive             -archivePath "$RUNNER_TEMP/MyCON.xcarchive"             -exportPath "$RUNNER_TEMP/export"             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
 
-          cp "$RUNNER_TEMP/export/"*.ipa MyCON-Recorder-iOS-1.0.1.ipa
+          cp "$RUNNER_TEMP/export/"*.ipa MyCON-Recorder-iOS-1.1.0.ipa
 
       - name: Validate TestFlight API secrets
         if: ${{ inputs.upload_to_testflight }}
@@ -140,18 +140,18 @@ jobs:
           mkdir -p "$HOME/.appstoreconnect/private_keys"
           printf '%s' "$PRIVATE_KEY" | base64 --decode > "$HOME/.appstoreconnect/private_keys/AuthKey_$KEY_ID.p8"
 
-          xcrun altool             --upload-app             --type ios             --file MyCON-Recorder-iOS-1.0.1.ipa             --apiKey "$KEY_ID"             --apiIssuer "$ISSUER_ID"
+          xcrun altool             --upload-app             --type ios             --file MyCON-Recorder-iOS-1.1.0.ipa             --apiKey "$KEY_ID"             --apiIssuer "$ISSUER_ID"
 
       - name: Attach signed IPA to GitHub Release
         if: ${{ inputs.attach_to_github_release }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload v1.0.1 MyCON-Recorder-iOS-1.0.1.ipa             --repo "$GITHUB_REPOSITORY"             --clobber
+          gh release upload v1.1.0 MyCON-Recorder-iOS-1.1.0.ipa             --repo "$GITHUB_REPOSITORY"             --clobber
 
       - uses: actions/upload-artifact@v4
         with:
-          name: MyCON-Recorder-iOS-1.0.1-IPA
-          path: MyCON-Recorder-iOS-1.0.1.ipa
+          name: MyCON-Recorder-iOS-1.1.0-IPA
+          path: MyCON-Recorder-iOS-1.1.0.ipa
           if-no-files-found: error
           retention-days: 30
