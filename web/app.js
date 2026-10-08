@@ -477,6 +477,270 @@ $("modelViewer").addEventListener("click",e=>{
   measurementMode=false;
 });
 
+const isIOSWeb =
+  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+
+const webSensorCapabilities={
+  camera:!!navigator.mediaDevices?.getUserMedia,
+  motion:"DeviceMotionEvent" in window,
+  gnss:"geolocation" in navigator,
+  immersiveAR:false
+};
+
+let xrSession=null;
+let xrRefSpace=null;
+let xrGL=null;
+let xrDepthFrames=[];
+let xrDepthIndex=[];
+let xrStartedAt=0;
+let xrLastDepthMs=0;
+let lastXRPackage=null;
+let lastXRPackageName="";
+
+async function detectWebSensors(){
+  const label=$("sensorCapabilityText");
+  const depth=$("webDepthState");
+  const status=$("xrDepthStatus");
+  const xrButton=$("xrDepthButton");
+  const iosButton=$("openIOSApp");
+
+  let immersive=false;
+  try{
+    immersive=!!navigator.xr &&
+      !!navigator.xr.isSessionSupported &&
+      await navigator.xr.isSessionSupported("immersive-ar");
+  }catch{}
+  webSensorCapabilities.immersiveAR=immersive;
+
+  const parts=[];
+  if(webSensorCapabilities.camera)parts.push("Camera");
+  if(webSensorCapabilities.motion)parts.push("Motion");
+  if(webSensorCapabilities.gnss)parts.push("GNSS");
+
+  if(immersive){
+    parts.push("WebXR");
+    depth.textContent="XR";
+    depth.className="compact-value ok";
+    status.textContent="Depth AR";
+    status.className="soft-badge ok";
+    xrButton.hidden=false;
+  }else if(isIOSWeb){
+    depth.textContent="iOS app";
+    depth.className="compact-value warn";
+    status.textContent="LiDAR → App";
+    status.className="soft-badge warn";
+    iosButton.hidden=false;
+    $("cameraHint").textContent="برای LiDAR خام، Capture را در اپ iPhone باز کن.";
+  }else{
+    depth.textContent="—";
+    depth.className="compact-value";
+    status.textContent="Depth —";
+    status.className="soft-badge";
+  }
+
+  label.textContent=parts.join(" • ") || "Camera";
+  $("webSensorBadge").textContent=
+    immersive ? "XR Ready" : (isIOSWeb ? "iPhone" : "Auto");
+}
+
+async function startXRDepthCapture(){
+  if(xrSession){
+    await xrSession.end();
+    return;
+  }
+
+  const msg=$("webCaptureMessage");
+  const button=$("xrDepthButton");
+
+  if(!navigator.xr){
+    msg.textContent="WebXR روی این مرورگر در دسترس نیست.";
+    return;
+  }
+
+  try{
+    xrDepthFrames=[];
+    xrDepthIndex=[];
+    lastXRPackage=null;
+    lastXRPackageName="";
+    $("downloadXRDepth").hidden=true;
+
+    const session=await navigator.xr.requestSession("immersive-ar",{
+      requiredFeatures:["depth-sensing"],
+      optionalFeatures:["local-floor"],
+      depthSensing:{
+        usagePreference:["cpu-optimized"],
+        dataFormatPreference:["float32","luminance-alpha"]
+      }
+    });
+
+    const canvas=document.createElement("canvas");
+    const gl=canvas.getContext("webgl",{
+      alpha:true,
+      antialias:false,
+      preserveDrawingBuffer:false
+    });
+    if(!gl)throw new Error("WebGL unavailable");
+    await gl.makeXRCompatible();
+
+    session.updateRenderState({
+      baseLayer:new XRWebGLLayer(session,gl)
+    });
+
+    let refSpace;
+    try{
+      refSpace=await session.requestReferenceSpace("local-floor");
+    }catch{
+      refSpace=await session.requestReferenceSpace("local");
+    }
+
+    xrSession=session;
+    xrRefSpace=refSpace;
+    xrGL=gl;
+    xrStartedAt=performance.now();
+    xrLastDepthMs=0;
+
+    button.textContent="پایان Depth AR";
+    button.classList.remove("secondary");
+    button.classList.add("primary");
+    $("xrDepthStatus").textContent="REC";
+    $("xrDepthStatus").className="soft-badge bad";
+    $("webDepthState").textContent="REC";
+    $("webDepthState").className="compact-value ok";
+    msg.textContent="Depth AR فعال است.";
+
+    session.addEventListener("end",finishXRDepthCapture,{once:true});
+    session.requestAnimationFrame(onXRDepthFrame);
+  }catch(err){
+    $("xrDepthStatus").textContent="Unavailable";
+    $("xrDepthStatus").className="soft-badge warn";
+    msg.textContent="Depth AR در این مرورگر/دستگاه قابل استفاده نیست.";
+    console.warn("MYCON WebXR depth:",err);
+  }
+}
+
+function onXRDepthFrame(time,frame){
+  const session=xrSession;
+  if(!session)return;
+  session.requestAnimationFrame(onXRDepthFrame);
+
+  const pose=frame.getViewerPose(xrRefSpace);
+  const layer=session.renderState.baseLayer;
+  if(layer&&xrGL){
+    xrGL.bindFramebuffer(xrGL.FRAMEBUFFER,layer.framebuffer);
+    xrGL.clearColor(0,0,0,0);
+    xrGL.clear(xrGL.COLOR_BUFFER_BIT|xrGL.DEPTH_BUFFER_BIT);
+  }
+
+  if(!pose || time-xrLastDepthMs<200)return;
+  xrLastDepthMs=time;
+
+  const view=pose.views[0];
+  if(!view || typeof frame.getDepthInformation!=="function")return;
+
+  let info=null;
+  try{
+    info=frame.getDepthInformation(view);
+  }catch{
+    return;
+  }
+  if(!info?.data)return;
+
+  const bytes=new Uint8Array(info.data.slice(0));
+  const format=session.depthDataFormat||"unknown";
+  const ext=format==="float32"?"f32":"bin";
+  const index=xrDepthFrames.length+1;
+  const name="depth/depth_"+String(index).padStart(6,"0")+"."+ext;
+  xrDepthFrames.push({name,bytes});
+
+  xrDepthIndex.push({
+    timestamp_ms:time,
+    file:name,
+    width:info.width,
+    height:info.height,
+    raw_value_to_meters:info.rawValueToMeters,
+    data_format:format,
+    depth_usage:session.depthUsage||"cpu-optimized",
+    norm_depth_buffer_from_norm_view:
+      info.normDepthBufferFromNormView?.matrix
+        ? Array.from(info.normDepthBufferFromNormView.matrix)
+        : null,
+    view_transform_matrix:view.transform?.matrix
+      ? Array.from(view.transform.matrix)
+      : null,
+    projection_matrix:view.projectionMatrix
+      ? Array.from(view.projectionMatrix)
+      : null
+  });
+
+  $("webDepthState").textContent=String(xrDepthFrames.length);
+}
+
+async function finishXRDepthCapture(){
+  const session=xrSession;
+  xrSession=null;
+  xrRefSpace=null;
+  xrGL=null;
+
+  const button=$("xrDepthButton");
+  button.textContent="Depth AR";
+  button.classList.remove("primary");
+  button.classList.add("secondary");
+
+  const project=$("webProject").value.trim()||"MYCON_PROJECT";
+  const durationMs=Math.max(0,Math.round(performance.now()-xrStartedAt));
+
+  if(window.JSZip && xrDepthFrames.length){
+    const zip=new JSZip();
+    xrDepthFrames.forEach(sample=>{
+      zip.file(sample.name,sample.bytes,{binary:true,compression:"STORE"});
+    });
+    zip.file(
+      "depth/depth_index.jsonl",
+      xrDepthIndex.map(x=>JSON.stringify(x)).join("\n")+"\n"
+    );
+    zip.file(
+      "session.json",
+      JSON.stringify({
+        format:"MYCON_WEB_XR_DEPTH_CAPTURE",
+        format_version:1,
+        app_version:"1.1.0-web",
+        project_hint:project,
+        duration_ms:durationMs,
+        depth_samples:xrDepthFrames.length,
+        depth_usage:session?.depthUsage||null,
+        depth_data_format:session?.depthDataFormat||null,
+        browser_metric_pose_available:true,
+        experimental_webxr:true,
+        not_for_r4_pose_validation:true,
+        warning:"WebXR depth is experimental auxiliary evidence. Native ARKit/ARCore remains the scientific capture path."
+      },null,2)
+    );
+    lastXRPackage=await zip.generateAsync({
+      type:"blob",
+      compression:"DEFLATE"
+    });
+    lastXRPackageName=safeName(project)+"_MYCON_WEBXR_DEPTH.zip";
+    $("downloadXRDepth").hidden=false;
+    $("xrDepthStatus").textContent="READY";
+    $("xrDepthStatus").className="soft-badge ok";
+    $("webCaptureMessage").textContent=
+      xrDepthFrames.length+" depth sample آماده است.";
+  }else{
+    $("xrDepthStatus").textContent="NO DATA";
+    $("xrDepthStatus").className="soft-badge warn";
+    $("webCaptureMessage").textContent="Depth sample ثبت نشد.";
+  }
+}
+
+$("xrDepthButton")?.addEventListener("click",startXRDepthCapture);
+$("downloadXRDepth")?.addEventListener("click",()=>{
+  if(lastXRPackage)downloadBlob(lastXRPackage,lastXRPackageName);
+});
+$("openIOSApp")?.addEventListener("click",()=>tapFeedback());
+
+detectWebSensors();
+
 let mediaStream=null,mediaRecorder=null,mediaChunks=[],motionRows=[],geoRows=[],webStartedAt=0,webTimer=null,geoWatch=null,lastWebPackage=null,lastWebPackageName="";
 function chooseMime(){
   const options=["video/mp4","video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"];
@@ -545,12 +809,19 @@ async function stopWebCapture(){
   const project=$("webProject").value.trim()||"MYCON_PROJECT";
   const durationMs=Math.round(performance.now()-webStartedAt);
   const manifest={
-    format:"MYCON_WEB_FALLBACK_CAPTURE",format_version:1,project_hint:project,
+    format:"MYCON_WEB_FALLBACK_CAPTURE",format_version:1,app_version:"1.1.0-web",project_hint:project,
     started_utc:new Date(Date.now()-durationMs).toISOString(),ended_utc:new Date().toISOString(),
     duration_ms:durationMs,video_dataset:"web_recording."+ext,
     scientific_6dof:false,metric_pose_available:false,
     not_for_r4_pose_validation:true,
-    sensors:{device_motion_samples:motionRows.length,gnss_samples:geoRows.length},
+    sensors:{
+      camera:webSensorCapabilities.camera,
+      motion_available:webSensorCapabilities.motion,
+      gnss_available:webSensorCapabilities.gnss,
+      immersive_ar_available:webSensorCapabilities.immersiveAR,
+      device_motion_samples:motionRows.length,
+      gnss_samples:geoRows.length
+    },
     warning:"Browser capture does not expose ARKit/ARCore metric 6DoF pose. Use native MyCON Recorder for scientific R4 acquisition."
   };
   if(window.JSZip){
