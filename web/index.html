@@ -48,7 +48,7 @@
     <section id="homePanel" class="panel active">
       <article class="hero">
         <div class="hero-copy">
-          <span class="kicker">MYCON 1.0.1</span>
+          <span class="kicker">MYCON 1.1</span>
           <h1>برداشت، کنترل و QA<br>در یک محیط ساده</h1>
           <p>Android، iPhone و Web با یک قرارداد مشترک.</p>
           <div class="hero-actions">
@@ -129,9 +129,9 @@
         <div>
           <span class="kicker">WEB CAPTURE</span>
           <h1>Capture</h1>
-          <p>ویدئو + IMU + GNSS</p>
+          <p>دوربین و سنسورها</p>
         </div>
-        <span class="soft-badge">پشتیبان</span>
+        <span id="webSensorBadge" class="soft-badge">Auto</span>
       </div>
 
       <article class="camera-stage">
@@ -140,14 +140,14 @@
           <span id="webCaptureState" class="live-pill">IDLE</span>
           <span id="webCaptureTimer" class="timer-pill">00:00</span>
         </div>
-        <div class="camera-hint">Pose متریک 6DoF فقط در اپ Native ثبت می‌شود.</div>
+        <div id="cameraHint" class="camera-hint">سنسورهای قابل دسترس خودکار فعال می‌شوند.</div>
       </article>
 
       <div class="stats-row" id="webSensorGrid">
+        <article class="stat"><span>Camera</span><strong id="cameraMode" class="compact-value">—</strong></article>
         <article class="stat"><span>Motion</span><strong id="motionCount">0</strong></article>
         <article class="stat"><span>GNSS</span><strong id="geoCount">0</strong></article>
-        <article class="stat"><span>Camera</span><strong id="cameraMode" class="compact-value">—</strong></article>
-        <article class="stat"><span>6DoF</span><strong class="danger-text">NO</strong></article>
+        <article class="stat"><span>Depth</span><strong id="webDepthState" class="compact-value">—</strong></article>
       </div>
 
       <article class="surface capture-controls">
@@ -161,6 +161,21 @@
           <button id="downloadWebCapture" class="secondary flex" disabled>ZIP</button>
         </div>
         <div id="webCaptureMessage" class="helper"></div>
+      </article>
+
+      <article class="surface sensor-center">
+        <div class="section-heading">
+          <div>
+            <h2>Sensors</h2>
+            <p id="sensorCapabilityText">در حال بررسی…</p>
+          </div>
+          <span id="xrDepthStatus" class="soft-badge">Depth —</span>
+        </div>
+        <div class="action-row sensor-actions">
+          <button id="xrDepthButton" class="secondary flex" hidden>Depth AR</button>
+          <button id="downloadXRDepth" class="secondary flex" hidden>Depth ZIP</button>
+          <a id="openIOSApp" class="primary flex app-link" href="mycon://capture" hidden>باز کردن اپ iPhone</a>
+        </div>
       </article>
     </section>
 
