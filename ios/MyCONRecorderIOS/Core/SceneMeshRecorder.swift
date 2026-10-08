@@ -161,7 +161,10 @@ enum SceneMeshRecorder {
                 }
 
                 let label = classificationName(
-                    geometry.classificationOf(faceWithIndex: faceIndex)
+                    classificationOf(
+                        geometry: geometry,
+                        faceIndex: faceIndex
+                    )
                 )
                 classifications[label, default: 0] += 1
 
@@ -229,6 +232,25 @@ enum SceneMeshRecorder {
         if !chunk.isEmpty {
             try handle.write(contentsOf: chunk)
         }
+    }
+
+    private static func classificationOf(
+        geometry: ARMeshGeometry,
+        faceIndex: Int
+    ) -> ARMeshClassification {
+        guard let source = geometry.classification,
+              faceIndex >= 0,
+              faceIndex < source.count else {
+            return .none
+        }
+
+        let address = source.buffer.contents().advanced(
+            by: source.offset + faceIndex * source.stride
+        )
+        let raw = Int(
+            address.assumingMemoryBound(to: UInt8.self).pointee
+        )
+        return ARMeshClassification(rawValue: raw) ?? .none
     }
 
     private static func classificationName(
