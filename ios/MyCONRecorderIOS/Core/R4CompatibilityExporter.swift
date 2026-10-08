@@ -82,7 +82,7 @@ enum R4CompatibilityExporter {
         let video = (manifest["video_dataset"] as? String) ?? "arcore_recording.mp4"
         let compatibility: [String: Any] = [
             "schema": "mycon.r4.capture_compatibility.v1",
-            "app_version": "1.0.1-ios",
+            "app_version": "1.1.0-ios",
             "pipeline_family": "MyCon R4 v4.8.x",
             "preserve_scientific_order": true,
             "files": [
@@ -176,7 +176,7 @@ enum R4CompatibilityExporter {
             guard values?.isRegularFile == true else { continue }
             let relative = url.path.replacingOccurrences(of: sessionDir.path + "/", with: "")
             let ext = url.pathExtension.lowercased()
-            let deferredBinary = ["mp4", "d16", "u8", "f32"].contains(ext)
+            let deferredBinary = ["mp4", "d16", "u8", "f32", "ply", "usdz"].contains(ext)
             rows.append([
                 "path": relative,
                 "size_bytes": values?.fileSize ?? 0,

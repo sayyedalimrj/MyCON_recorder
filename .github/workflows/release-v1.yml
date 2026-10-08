@@ -1,4 +1,4 @@
-name: Publish MyCON 1.0.1
+name: Publish MyCON 1.1.0
 
 on:
   workflow_dispatch:
@@ -8,12 +8,12 @@ on:
       - "ios/**"
       - "web/**"
       - "tools/**"
-      - "RELEASE_NOTES_v1.0.1.md"
+      - "RELEASE_NOTES_v1.1.0.md"
       - ".github/workflows/release-v1.yml"
   push:
     branches: [main]
     paths:
-      - "RELEASE_NOTES_v1.0.1.md"
+      - "RELEASE_NOTES_v1.1.0.md"
       - ".github/workflows/release-v1.yml"
 
 permissions:
@@ -52,16 +52,16 @@ jobs:
           python -m pip install --disable-pip-version-check -q numpy
           python tools/mycon_r4_bridge.py --self-test
 
-      - name: Build Android 1.0.1 APK
+      - name: Build Android 1.1.0 APK
         run: gradle :app:assembleDebug --stacktrace
 
       - name: Name Android release artifact
-        run: cp app/build/outputs/apk/debug/app-debug.apk MyCON-Recorder-Android-1.0.1.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk MyCON-Recorder-Android-1.1.0.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: release-android
-          path: MyCON-Recorder-Android-1.0.1.apk
+          path: MyCON-Recorder-Android-1.1.0.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -97,17 +97,17 @@ jobs:
         working-directory: ios
         run: |
           cd build/Build/Products/Release-iphonesimulator
-          zip -qry ../../../../MyCON-Recorder-iOS-1.0.1-simulator.zip "MyCON Recorder.app"
+          zip -qry ../../../../MyCON-Recorder-iOS-1.1.0-simulator.zip "MyCON Recorder.app"
           cd ../../../../
           cd build-device/Build/Products/Release-iphoneos
-          zip -qry ../../../../MyCON-Recorder-iOS-1.0.1-device-unsigned.zip "MyCON Recorder.app"
+          zip -qry ../../../../MyCON-Recorder-iOS-1.1.0-device-unsigned.zip "MyCON Recorder.app"
 
       - uses: actions/upload-artifact@v4
         with:
           name: release-ios
           path: |
-            ios/MyCON-Recorder-iOS-1.0.1-simulator.zip
-            ios/MyCON-Recorder-iOS-1.0.1-device-unsigned.zip
+            ios/MyCON-Recorder-iOS-1.1.0-simulator.zip
+            ios/MyCON-Recorder-iOS-1.1.0-device-unsigned.zip
           if-no-files-found: error
           retention-days: 30
 
@@ -120,22 +120,22 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Validate Web 1.0.1
+      - name: Validate Web 1.1.0
         run: |
           node --check web/app.js
-          grep -q "MYCON 1.0.1" web/index.html
+          grep -q "MYCON 1.1.0" web/index.html
           grep -q "mycon.theme.v1" web/app.js
           python3 tools/validate_web_models.py
           python3 -m json.tool web/models/catalog.json >/dev/null
           python3 -m json.tool web/models/calibration-cube-1m.gltf >/dev/null
 
       - name: Package Web/PWA
-        run: zip -qry MyCON-Web-1.0.1.zip web
+        run: zip -qry MyCON-Web-1.1.0.zip web
 
       - uses: actions/upload-artifact@v4
         with:
           name: release-web
-          path: MyCON-Web-1.0.1.zip
+          path: MyCON-Web-1.1.0.zip
           if-no-files-found: error
           retention-days: 30
 
@@ -154,19 +154,19 @@ jobs:
 
       - name: Verify release payload
         run: |
-          test -f release-assets/MyCON-Recorder-Android-1.0.1.apk
-          test -f release-assets/MyCON-Recorder-iOS-1.0.1-simulator.zip
-          test -f release-assets/MyCON-Recorder-iOS-1.0.1-device-unsigned.zip
-          test -f release-assets/MyCON-Web-1.0.1.zip
+          test -f release-assets/MyCON-Recorder-Android-1.1.0.apk
+          test -f release-assets/MyCON-Recorder-iOS-1.1.0-simulator.zip
+          test -f release-assets/MyCON-Recorder-iOS-1.1.0-device-unsigned.zip
+          test -f release-assets/MyCON-Web-1.1.0.zip
           sha256sum release-assets/* | tee release-assets/SHA256SUMS.txt
 
-      - name: Publish GitHub Release v1.0.1
+      - name: Publish GitHub Release v1.1.0
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view v1.0.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release edit v1.0.1               --repo "$GITHUB_REPOSITORY"               --title "MyCON 1.0.1"               --notes-file RELEASE_NOTES_v1.0.1.md
-            gh release upload v1.0.1 release-assets/*               --repo "$GITHUB_REPOSITORY"               --clobber
+          if gh release view v1.1.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit v1.1.0               --repo "$GITHUB_REPOSITORY"               --title "MyCON 1.1.0"               --notes-file RELEASE_NOTES_v1.1.0.md
+            gh release upload v1.1.0 release-assets/*               --repo "$GITHUB_REPOSITORY"               --clobber
           else
-            gh release create v1.0.1 release-assets/*               --repo "$GITHUB_REPOSITORY"               --target "$GITHUB_SHA"               --title "MyCON 1.0.1"               --notes-file RELEASE_NOTES_v1.0.1.md
+            gh release create v1.1.0 release-assets/*               --repo "$GITHUB_REPOSITORY"               --target "$GITHUB_SHA"               --title "MyCON 1.1.0"               --notes-file RELEASE_NOTES_v1.1.0.md
           fi

@@ -20,11 +20,19 @@ final class CaptureController: NSObject, ObservableObject {
     @Published var depthText = "RGB"
     @Published var featurePointCount = 0
     @Published var pathLengthM: Double = 0
+    @Published var lidarAvailable = false
+    @Published var smoothedDepthAvailable = false
+    @Published var meshAvailable = false
+    @Published var motionAvailable = false
+    @Published var barometerAvailable = false
+    @Published var gnssAvailable = false
+    @Published var sensorSummaryText = "ARKit"
 
     private weak var arView: ARView?
     private var package: CapturePackageWriter?
     private var video: VideoRecorder?
     private let motion = CMMotionManager()
+    private let altimeter = CMAltimeter()
     private let location = CLLocationManager()
     private var latestLocation: CLLocation?
     private var latestAngularSpeedRadS: Double = 0
@@ -39,8 +47,17 @@ final class CaptureController: NSObject, ObservableObject {
         super.init()
         location.delegate = self
         location.desiredAccuracy = kCLLocationAccuracyBest
+        location.headingFilter = 2
         location.requestWhenInUseAuthorization()
         location.startUpdatingLocation()
+
+        lidarAvailable = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
+        smoothedDepthAvailable = ARWorldTrackingConfiguration.supportsFrameSemantics(.smoothedSceneDepth)
+        meshAvailable = ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh)
+        motionAvailable = motion.isDeviceMotionAvailable
+        barometerAvailable = CMAltimeter.isRelativeAltitudeAvailable()
+        gnssAvailable = CLLocationManager.locationServicesEnabled()
+        updateSensorSummary()
     }
 
     func attach(_ view: ARView) {
@@ -62,6 +79,9 @@ final class CaptureController: NSObject, ObservableObject {
         if ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
             c.frameSemantics.insert(.sceneDepth)
         }
+        if ARWorldTrackingConfiguration.supportsFrameSemantics(.smoothedSceneDepth) {
+            c.frameSemantics.insert(.smoothedSceneDepth)
+        }
         if ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification) {
             c.sceneReconstruction = .meshWithClassification
         } else if ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) {
@@ -78,6 +98,9 @@ final class CaptureController: NSObject, ObservableObject {
             package = p
             video = VideoRecorder(outputURL: p.videoURL)
             startMotion()
+            if CLLocationManager.headingAvailable() {
+                location.startUpdatingHeading()
+            }
             pathLengthM = 0
             lastPathPosition = nil
             isRecording = true
@@ -94,6 +117,9 @@ final class CaptureController: NSObject, ObservableObject {
         lastPathPosition = nil
 
         let package = self.package
+        if let frame = arView?.session.currentFrame {
+            package?.recordSpatialSnapshot(frame)
+        }
         self.package = nil
         let hint = projectHint.trimmingCharacters(in: .whitespacesAndNewlines)
         let video = self.video
@@ -158,6 +184,37 @@ final class CaptureController: NSObject, ObservableObject {
                     sensor: "ROT_VEC",
                     values: [q.x,q.y,q.z,q.w]
                 )
+                self?.package?.recordIMU(
+                    timestamp: d.timestamp,
+                    sensor: "GRAVITY",
+                    values: [d.gravity.x,d.gravity.y,d.gravity.z]
+                )
+                self?.package?.recordIMU(
+                    timestamp: d.timestamp,
+                    sensor: "USER_ACCEL",
+                    values: [d.userAcceleration.x,d.userAcceleration.y,d.userAcceleration.z]
+                )
+                let magnetic = d.magneticField
+                self?.package?.recordIMU(
+                    timestamp: d.timestamp,
+                    sensor: "MAG_CAL",
+                    values: [magnetic.field.x,magnetic.field.y,magnetic.field.z],
+                    accuracy: Int(magnetic.accuracy.rawValue)
+                )
+            }
+        }
+
+        if CMAltimeter.isRelativeAltitudeAvailable() {
+            altimeter.startRelativeAltitudeUpdates(to: .init()) { [weak self] data, _ in
+                guard let data else { return }
+                self?.package?.recordIMU(
+                    timestamp: ProcessInfo.processInfo.systemUptime,
+                    sensor: "BARO",
+                    values: [
+                        data.pressure.doubleValue,
+                        data.relativeAltitude.doubleValue
+                    ]
+                )
             }
         }
     }
@@ -166,6 +223,8 @@ final class CaptureController: NSObject, ObservableObject {
         motion.stopAccelerometerUpdates()
         motion.stopGyroUpdates()
         motion.stopDeviceMotionUpdates()
+        altimeter.stopRelativeAltitudeUpdates()
+        location.stopUpdatingHeading()
         latestAngularSpeedRadS = 0
     }
 
@@ -281,9 +340,19 @@ final class CaptureController: NSObject, ObservableObject {
         renderedModels.insert(key)
     }
 
+    private func updateSensorSummary() {
+        var parts: [String] = []
+        if lidarAvailable { parts.append("LiDAR") }
+        if meshAvailable { parts.append("Mesh") }
+        if barometerAvailable { parts.append("Baro") }
+        if gnssAvailable { parts.append("GNSS") }
+        if parts.isEmpty { parts.append("ARKit") }
+        sensorSummaryText = parts.prefix(3).joined(separator: " • ")
+    }
+
     private func updateLiveQuality(_ frame: ARFrame) {
         featurePointCount = frame.rawFeaturePoints?.points.count ?? 0
-        depthText = frame.sceneDepth != nil || frame.smoothedSceneDepth != nil ? "DEPTH" : "RGB"
+        depthText = frame.sceneDepth != nil || frame.smoothedSceneDepth != nil ? "LIDAR" : "RGB"
 
         switch frame.worldMappingStatus {
         case .mapped: mappingText = "MAP • MAPPED"
@@ -383,6 +452,25 @@ extension CaptureController: CLLocationManagerDelegate {
         guard let last = locations.last else { return }
         Task { @MainActor [weak self] in
             self?.latestLocation = last
+        }
+    }
+
+    nonisolated func locationManager(
+        _ manager: CLLocationManager,
+        didUpdateHeading newHeading: CLHeading
+    ) {
+        guard newHeading.headingAccuracy >= 0 else { return }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.package?.recordIMU(
+                timestamp: ProcessInfo.processInfo.systemUptime,
+                sensor: "HEADING",
+                values: [
+                    newHeading.magneticHeading,
+                    newHeading.trueHeading,
+                    newHeading.headingAccuracy
+                ]
+            )
         }
     }
 }

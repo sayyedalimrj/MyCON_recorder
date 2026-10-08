@@ -8,6 +8,13 @@
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
   <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key><string>ir.mycon.capture.ios</string>
+      <key>CFBundleURLSchemes</key><array><string>mycon</string></array>
+    </dict>
+  </array>
   <key>LSRequiresIPhoneOS</key><true/>
   <key>NSCameraUsageDescription</key><string>MyCON uses the rear camera for scientific field capture, QR controls and AR tracking.</string>
   <key>NSLocationWhenInUseUsageDescription</key><string>MyCON records auxiliary GNSS evidence with each scientific capture.</string>

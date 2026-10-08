@@ -866,3 +866,19 @@ html[data-theme="light"] .orbit{border-color:rgba(41,105,194,.10)}
   .model-picker{grid-template-columns:1fr}
   .model-picker .secondary{width:100%}
 }
+
+
+/* ---------- MyCON 1.1 sensor center ---------- */
+.sensor-center{margin-top:12px}
+.sensor-actions{margin-top:8px}
+.app-link{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  text-decoration:none;
+}
+.sensor-center .section-heading{margin-bottom:6px}
+.sensor-center .section-heading p{max-width:520px}
+#webDepthState.ok{color:var(--ok)}
+#webDepthState.warn{color:var(--warn)}
+#webDepthState.bad{color:var(--bad)}
