@@ -4,7 +4,7 @@ import UIKit
 
 @MainActor
 final class RoomPlanScanner: NSObject, ObservableObject, RoomCaptureViewDelegate, RoomCaptureSessionDelegate {
-    @Published var status = "آماده اسکن اتاق"
+    @Published var status = "آماده"
     @Published var resultURL: URL?
     @Published var isRunning = false
     weak var captureView: RoomCaptureView?
@@ -31,14 +31,14 @@ final class RoomPlanScanner: NSObject, ObservableObject, RoomCaptureViewDelegate
         config.isCoachingEnabled = true
         view.captureSession.run(configuration: config)
         isRunning = true
-        status = "اسکن فعال است • آرام و پیوسته حرکت کن"
+        status = "اسکن فعال"
     }
 
     func stop() {
         guard isRunning else { return }
         captureView?.captureSession.stop()
         isRunning = false
-        status = "در حال پردازش RoomPlan…"
+        status = "در حال پردازش…"
     }
 
     func captureView(shouldPresent roomDataForProcessing: CapturedRoomData, error: Error?) -> Bool {
@@ -58,14 +58,25 @@ final class RoomPlanScanner: NSObject, ObservableObject, RoomCaptureViewDelegate
             let url = root.appendingPathComponent("MYCON_ROOM_\(Int(Date().timeIntervalSince1970)).usdz")
             try processedResult.export(to: url)
             resultURL = url
-            status = "RoomPlan آماده شد"
+            status = "اسکن آماده شد"
         } catch {
             status = "Export ناموفق: \(error.localizedDescription)"
         }
     }
 
     func captureSession(_ session: RoomCaptureSession, didProvide instruction: RoomCaptureSession.Instruction) {
-        status = String(describing: instruction)
+        let hint = String(describing: instruction).lowercased()
+        if hint.contains("slow") {
+            status = "کمی آهسته‌تر"
+        } else if hint.contains("light") {
+            status = "نور بیشتر"
+        } else if hint.contains("close") {
+            status = "کمی نزدیک‌تر"
+        } else if hint.contains("away") {
+            status = "کمی دورتر"
+        } else {
+            status = "اسکن فعال"
+        }
     }
 }
 
@@ -114,7 +125,7 @@ struct RoomPlanScanView: View {
                     )
                 }
             }
-            .navigationTitle("Room Scan")
+            .navigationTitle("Room")
             .navigationBarTitleDisplayMode(.inline)
         }
     }
