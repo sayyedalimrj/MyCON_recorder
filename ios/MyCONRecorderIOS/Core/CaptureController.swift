@@ -98,6 +98,9 @@ final class CaptureController: NSObject, ObservableObject {
             package = p
             video = VideoRecorder(outputURL: p.videoURL)
             startMotion()
+            if CLLocationManager.headingAvailable() {
+                location.startUpdatingHeading()
+            }
             pathLengthM = 0
             lastPathPosition = nil
             isRecording = true
@@ -114,6 +117,9 @@ final class CaptureController: NSObject, ObservableObject {
         lastPathPosition = nil
 
         let package = self.package
+        if let frame = arView?.session.currentFrame {
+            package?.recordSpatialSnapshot(frame)
+        }
         self.package = nil
         let hint = projectHint.trimmingCharacters(in: .whitespacesAndNewlines)
         let video = self.video
@@ -301,9 +307,19 @@ final class CaptureController: NSObject, ObservableObject {
         renderedModels.insert(key)
     }
 
+    private func updateSensorSummary() {
+        var parts: [String] = []
+        if lidarAvailable { parts.append("LiDAR") }
+        if meshAvailable { parts.append("Mesh") }
+        if barometerAvailable { parts.append("Baro") }
+        if gnssAvailable { parts.append("GNSS") }
+        if parts.isEmpty { parts.append("ARKit") }
+        sensorSummaryText = parts.prefix(3).joined(separator: " • ")
+    }
+
     private func updateLiveQuality(_ frame: ARFrame) {
         featurePointCount = frame.rawFeaturePoints?.points.count ?? 0
-        depthText = frame.sceneDepth != nil || frame.smoothedSceneDepth != nil ? "DEPTH" : "RGB"
+        depthText = frame.sceneDepth != nil || frame.smoothedSceneDepth != nil ? "LIDAR" : "RGB"
 
         switch frame.worldMappingStatus {
         case .mapped: mappingText = "MAP • MAPPED"
