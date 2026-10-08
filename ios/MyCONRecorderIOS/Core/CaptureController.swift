@@ -20,11 +20,19 @@ final class CaptureController: NSObject, ObservableObject {
     @Published var depthText = "RGB"
     @Published var featurePointCount = 0
     @Published var pathLengthM: Double = 0
+    @Published var lidarAvailable = false
+    @Published var smoothedDepthAvailable = false
+    @Published var meshAvailable = false
+    @Published var motionAvailable = false
+    @Published var barometerAvailable = false
+    @Published var gnssAvailable = false
+    @Published var sensorSummaryText = "ARKit"
 
     private weak var arView: ARView?
     private var package: CapturePackageWriter?
     private var video: VideoRecorder?
     private let motion = CMMotionManager()
+    private let altimeter = CMAltimeter()
     private let location = CLLocationManager()
     private var latestLocation: CLLocation?
     private var latestAngularSpeedRadS: Double = 0
