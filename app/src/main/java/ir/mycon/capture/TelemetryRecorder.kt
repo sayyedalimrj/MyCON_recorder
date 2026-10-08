@@ -101,6 +101,12 @@ class TelemetryRecorder(
     private var isoSum =
         0.0
 
+    private val eventCounts =
+        mutableMapOf<String, Long>()
+
+    private val activeSensors:
+        List<MyConActiveSensor>
+
     @Volatile
     private var closed = false
 
@@ -115,23 +121,11 @@ class TelemetryRecorder(
             "timestamp_ns,sensor,v0,v1,v2,v3,accuracy\n"
         )
 
-        listOf(
-            Sensor.TYPE_ACCELEROMETER,
-            Sensor.TYPE_GYROSCOPE,
-            Sensor.TYPE_ROTATION_VECTOR
-        ).forEach { type ->
-            sensorManager
-                .getDefaultSensor(type)
-                ?.let { sensor ->
-                    sensorManager
-                        .registerListener(
-                            this,
-                            sensor,
-                            SensorManager
-                                .SENSOR_DELAY_GAME
-                        )
-                }
-        }
+        activeSensors =
+            AndroidSensorSuite.register(
+                manager = sensorManager,
+                listener = this
+            )
     }
 
     @Synchronized
@@ -442,17 +436,9 @@ class TelemetryRecorder(
         if (closed) return
 
         val name =
-            when (
+            AndroidSensorSuite.eventCode(
                 event.sensor.type
-            ) {
-                Sensor.TYPE_ACCELEROMETER ->
-                    "ACCEL"
-                Sensor.TYPE_GYROSCOPE ->
-                    "GYRO"
-                Sensor.TYPE_ROTATION_VECTOR ->
-                    "ROT_VEC"
-                else -> return
-            }
+            ) ?: return
 
         synchronized(this) {
             if (closed) return
@@ -476,6 +462,8 @@ class TelemetryRecorder(
             imuWriter.write(
                 "${event.timestamp},$name,$v0,$v1,$v2,$v3,${event.accuracy}\n"
             )
+            eventCounts[name] =
+                (eventCounts[name] ?: 0L) + 1L
         }
     }
 
@@ -501,6 +489,12 @@ class TelemetryRecorder(
         imuWriter.close()
         qrWriter.flush()
         qrWriter.close()
+
+        AndroidSensorSuite.writeManifest(
+            sessionDir = sessionDir,
+            activeSensors = activeSensors,
+            eventCounts = eventCounts.toMap()
+        )
 
         val frames =
             frameCounter.get()
@@ -558,7 +552,7 @@ class TelemetryRecorder(
                 )
                 .put(
                     "app_version",
-                    "1.1.0"
+                    "1.2.0"
                 )
                 .put(
                     "started_utc",
@@ -604,6 +598,30 @@ class TelemetryRecorder(
                 .put(
                     "imu_file",
                     "imu.csv"
+                )
+                .put(
+                    "sensor_manifest_file",
+                    "sensor_manifest.json"
+                )
+                .put(
+                    "sensor_suite",
+                    JSONObject()
+                        .put(
+                            "policy",
+                            "AUTO_IMPORTANT_ONLY"
+                        )
+                        .put(
+                            "active_sensor_count",
+                            activeSensors.size
+                        )
+                        .put(
+                            "codes",
+                            JSONArray(
+                                activeSensors.map {
+                                    it.spec.code
+                                }
+                            )
+                        )
                 )
                 .put(
                     "qr_events_file",

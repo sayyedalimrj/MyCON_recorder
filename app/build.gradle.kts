@@ -11,8 +11,8 @@ android {
         applicationId = "ir.mycon.capture"
         minSdk = 24
         targetSdk = 35
-        versionCode = 12
-        versionName = "1.1.0"
+        versionCode = 13
+        versionName = "1.2.0"
     }
 
     buildTypes {

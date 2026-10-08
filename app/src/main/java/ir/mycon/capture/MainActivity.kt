@@ -1702,6 +1702,39 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         }
     }
 
+    private fun showSensorInfoDialog() {
+        val depth =
+            arSession
+                ?.isDepthModeSupported(
+                    Config.DepthMode.AUTOMATIC
+                ) == true
+
+        val body =
+            buildString {
+                append(
+                    AndroidSensorSuite
+                        .userSummary(
+                            this@MainActivity
+                        )
+                )
+                append("\n")
+                append(
+                    if (depth) {
+                        "✓  Raw Depth + Confidence"
+                    } else {
+                        "—  Depth"
+                    }
+                )
+                append("\n\nAuto • بدون تنظیم اضافی")
+            }
+
+        AlertDialog.Builder(this)
+            .setTitle("Sensors")
+            .setMessage(body)
+            .setPositiveButton("بستن", null)
+            .show()
+    }
+
     private fun showCameraInfoDialog() {
         val selected =
             cameraSelection
@@ -1865,6 +1898,17 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                         R.drawable.ic_camera_info_action
                 ) {
                     showCameraInfoDialog()
+                },
+                CaptureSheets.ToolAction(
+                    title = "Sensors",
+                    subtitle =
+                        AndroidSensorSuite.compactSummary(
+                            this
+                        ),
+                    iconRes =
+                        R.drawable.ic_camera_info_action
+                ) {
+                    showSensorInfoDialog()
                 },
                 CaptureSheets.ToolAction(
                     title = "تنظیمات",
