@@ -18,9 +18,9 @@ object SessionPackager {
 
     fun sourceFiles(dir: File): List<SourceFile> {
         require(dir.isDirectory) { "Session folder not found" }
-        val canonical = dir.canonicalFile.toPath()
+        val canonical = dir.canonicalPath
         return dir.walkTopDown().filter { it.isFile }.map { file ->
-            require(file.canonicalFile.toPath().startsWith(canonical)) { "Unexpected file path" }
+            require(file.canonicalPath.startsWith(canonical + File.separator)) { "Unexpected file path" }
             SourceFile(
                 file,
                 file.relativeTo(dir).invariantSeparatorsPath,
@@ -31,7 +31,7 @@ object SessionPackager {
     }
 
     fun zip(dir: File, out: File): File {
-        require(!out.canonicalFile.toPath().startsWith(dir.canonicalFile.toPath())) {
+        require(!out.canonicalPath.startsWith(dir.canonicalPath + File.separator)) {
             "ZIP destination must be outside the source folder"
         }
         val pending = File(out.parentFile, ".${out.name}.${System.nanoTime()}.partial")
