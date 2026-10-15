@@ -110,7 +110,7 @@ class SessionSummaryActivity : AppCompatActivity() {
         root.addView(
             Ui.title(
                 this,
-                "برداشت ذخیره شد",
+                if (info?.hasManifest == false) "برداشت ناتمام" else "برداشت ذخیره شد",
                 24f
             )
         )
@@ -168,7 +168,7 @@ class SessionSummaryActivity : AppCompatActivity() {
                 0.90
 
         val realityReady =
-            info.frameCount > 0L &&
+            info.hasManifest && info.frameCount > 0L &&
                 trackingGood
 
         val hero =
@@ -444,13 +444,11 @@ class SessionSummaryActivity : AppCompatActivity() {
         root.addView(
             Ui.primaryButton(
                 this,
-                "اشتراک بسته MyCON R4"
+                "فایل‌ها و ZIP بازیابی"
             ).apply {
                 setOnClickListener {
-                    repository.share(
-                        this@SessionSummaryActivity,
-                        info.dir
-                    )
+                    startActivity(Intent(this@SessionSummaryActivity, SessionRecoveryActivity::class.java)
+                        .putExtra(SessionRecoveryActivity.EXTRA_SESSION_PATH, info.dir.absolutePath))
                 }
             },
             LinearLayout.LayoutParams(
