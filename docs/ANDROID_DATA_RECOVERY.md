@@ -36,6 +36,16 @@ Compare the SHA-256 **certificate digest** from both commands. If different, **S
 
 On compatible signatures, normal Android update should preserve app data because we keep the same `applicationId`, do not change storage roots and do not run any destructive migrations. Still back up the 416 MB recording before updating when possible.
 
+## Automatic no-install PC rescue
+
+With official Android platform-tools installed and USB debugging approved:
+
+```bash
+python tools/mycon_adb_backup.py --output MYCON_BACKUP
+```
+
+This makes a new local backup, verifies the generated ZIP CRC and writes a per-file SHA-256 manifest. If direct ADB copy is denied, the tool attempts a read-only `run-as` TAR export for debug builds. It never modifies app data or runs uninstall/clear.
+
 ## Independent emergency backup over USB/ADB
 
 On some devices Android's file manager hides `Android/data`, but ADB may read the app-specific external storage. Try:
