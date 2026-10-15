@@ -65,18 +65,34 @@ jobs:
           python tools/mycon_r4_bridge.py --self-test
 
       - name: Restore stable debug signing key
+        id: signing_cache
         uses: actions/cache@v4
         with:
           path: ~/.android/debug.keystore
           key: mycon-debug-keystore-v1
 
+      # Never silently generate a new debug key: that would produce an APK
+      # unable to update an existing installation without uninstalling it.
+      - name: Refuse unknown signing key
+        env:
+          CACHE_HIT: ${{ steps.signing_cache.outputs.cache-hit }}
+        run: |
+          if [ "$CACHE_HIT" != "true" ] || [ ! -f "$HOME/.android/debug.keystore" ]; then
+            echo "::error::Original Android signing key unavailable; refusing unsafe update APK."
+            exit 1
+          fi
+
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
+
+      - name: Print update compatibility certificate fingerprint
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: MyCON-Recorder-Android-1.2.0
+          name: MyCON-Recorder-Android-1.2.1-Recovery
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
