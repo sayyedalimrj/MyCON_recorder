@@ -35,7 +35,7 @@ class SessionManagerActivity : AppCompatActivity() {
     private fun render() {
         root.removeAllViews()
         root.addView(Ui.title(this, "برداشت‌ها", 26f))
-        root.addView(Ui.label(this, "Sessionها داخل فضای اختصاصی اپ نگهداری می‌شوند. ZIP را هر زمان لازم بود بساز و Share کن.", 13f))
+        root.addView(Ui.label(this, "برداشت‌های قدیمی را ببین و بدون حذف فایل‌ها خروجی بگیر.", 13f))
         Ui.addSpacer(root, 16)
 
         val sessions = repository.listSessions()
@@ -50,7 +50,7 @@ class SessionManagerActivity : AppCompatActivity() {
                 orientation = LinearLayout.VERTICAL
                 setPadding(Ui.dp(this@SessionManagerActivity, 16), Ui.dp(this@SessionManagerActivity, 14), Ui.dp(this@SessionManagerActivity, 16), Ui.dp(this@SessionManagerActivity, 14))
             }
-            box.addView(Ui.title(this, info.project, 18f))
+            box.addView(Ui.title(this, info.project + if (!info.hasManifest) " • ناتمام" else "", 18f))
             box.addView(Ui.label(this, info.startedUtc.ifBlank { info.name }, 12f))
             Ui.addSpacer(box, 8)
             val videoLabel =
@@ -77,26 +77,16 @@ class SessionManagerActivity : AppCompatActivity() {
                     startActivity(Intent(this@SessionManagerActivity, SessionSummaryActivity::class.java).putExtra(SessionSummaryActivity.EXTRA_SESSION_PATH, info.dir.absolutePath))
                 }
             }
-            val share = Ui.button(this, "ZIP", Ui.GREEN).apply {
-                setOnClickListener { repository.share(this@SessionManagerActivity, info.dir) }
-            }
-            val delete = Ui.button(this, "حذف", Ui.RED).apply {
+            val share = Ui.button(this, "فایل‌ها / ZIP", Ui.GREEN).apply {
                 setOnClickListener {
-                    AlertDialog.Builder(this@SessionManagerActivity)
-                        .setTitle("حذف برداشت؟")
-                        .setMessage("این Session و ZIP ساخته‌شده از آن حذف می‌شوند.")
-                        .setNegativeButton("لغو", null)
-                        .setPositiveButton("حذف") { _, _ ->
-                            repository.delete(info.dir)
-                            render()
-                        }
-                        .show()
+                    startActivity(Intent(this@SessionManagerActivity, SessionRecoveryActivity::class.java)
+                        .putExtra(SessionRecoveryActivity.EXTRA_SESSION_PATH, info.dir.absolutePath))
                 }
             }
             val p = LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1f).apply { marginEnd = Ui.dp(this@SessionManagerActivity, 6) }
             actions.addView(summary, p)
             actions.addView(share, p)
-            actions.addView(delete, LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1f))
+            
             box.addView(actions)
             card.addView(box)
             root.addView(card, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
