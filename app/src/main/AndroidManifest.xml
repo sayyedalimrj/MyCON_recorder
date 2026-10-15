@@ -38,6 +38,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".SessionRecoveryActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".SessionSummaryActivity"
             android:configChanges="orientation|screenSize|smallestScreenSize|keyboardHidden"
             android:exported="false" />
